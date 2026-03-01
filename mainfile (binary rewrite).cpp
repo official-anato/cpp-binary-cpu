@@ -151,77 +151,90 @@ class Cpu{
       }
     }
    
-   void _updflag(uint8_t res){
+   void __UpdFlg(uint8_t res){
     if ((int)res < 0){Zero = false; Carry = false; Sign = true;}
-    else if ((int)res > 0){Zero = false; Carry = (result > 4294967295U) ? true : false; Sign = false;}
+    else if ((int)res > 0){Zero = false; Carry = (res > 4294967295U) ? true : false; Sign = false;}
     else if ((int)res == 0){Zero = true; Carry = false; Sign = false;}
    }
+   
+   void _UpdFlg(uint8_t MD, uint8_t R){
+     if (MD == 0b01){
+       __UpdFlg(reg[R]);
+     }
+     
+     else if (MD == 0b10){
+       __UpdFlg(RAM[R]);
+     }
+     
+     else{
+       throw std::invalid_argument("Flag Error: Flag update failure. Parameter is not register or address.");
+     }
+   }
     
-    void add(const uint8_t& MD, const uint8_t& A, const uint8_t& B, const uint8_t& R){
+    uint8_t _math(uint8_t A, uint8_t B, uint8_t operation){
+      switch(operation){
+        case 0b00:{
+          return A+B;
+          break;
+        }
+        
+        case 0b01:{
+          return A-B;
+          break;
+        }
+        
+        case 0b10:{
+          return A*B;
+          break;
+        }
+        
+        case 0b11:{
+          return A/B;
+          break;
+        }
+        
+        case 0b100:{
+          return A%B;
+          break;
+        }
+    
+        default:{
+          throw std::invalid_argument("Syntax Error: Invalid mathematical operation!");
+          break;
+        }
+      }
+    }
+    
+    void ALU(uint8_t MD, uint8_t A, uint8_t B, uint8_t R, uint8_t arithmetic){
       uint8_t MD1 = (MD) & 0b11;
       uint8_t MD2 = (MD >> 2) & 0b11;
       uint8_t MD3 = (MD >> 4) & 0b11;
-      uint8_t X = _get_value(MD1, A, "'B'");
-      uint8_t Y = _get_value(MD2, B, "'A'");
-      _writedata(R, MD3, X+Y);
+      uint8_t X = _get_value(MD1, A, "'A'");
+      uint8_t Y = _get_value(MD2, B, "'B'");
+      _writedata(R, MD3, _math(A, B, arithmetic));
+      _UpdFlg(MD3, R);
     }
     
-    void sub(const uint8_t& MD, const uint8_t& A, const uint8_t& B, const uint8_t& R){
-      uint8_t MD1 = (MD) & 0b11;
-      uint8_t MD2 = (MD >> 2) & 0b11;
-      uint8_t MD3 = (MD >> 4) & 0b11;
-      uint8_t X = _get_value(MD1, A, "'B'");
-      uint8_t Y = _get_value(MD2, B, "'A'");
-      _writedata(R, MD3, X-Y);
+    void jmp(uint8_t MD, uint8_t value){
     }
     
-    void mul(const uint8_t& MD, const uint8_t& A, const uint8_t& B, const uint8_t& R){
-      uint8_t MD1 = (MD) & 0b11;
-      uint8_t MD2 = (MD >> 2) & 0b11;
-      uint8_t MD3 = (MD >> 4) & 0b11;
-      uint8_t X = _get_value(MD1, A, "'B'");
-      uint8_t Y = _get_value(MD2, B, "'A'");
-      _writedata(R, MD3, X*Y);
+    void jeq(uint8_t MD, uint8_t value){
     }
     
-    void div(const uint8_t& MD, const uint8_t& A, const uint8_t& B, const uint8_t& R){
-      uint8_t MD1 = (MD) & 0b11;
-      uint8_t MD2 = (MD >> 2) & 0b11;
-      uint8_t MD3 = (MD >> 4) & 0b11;
-      uint8_t X = _get_value(MD1, A, "'B'");
-      uint8_t Y = _get_value(MD2, B, "'A'");
-      _writedata(R, MD3, X/Y);
+    void jlt(uint8_t MD, uint8_t value){
     }
     
-    void mod(const uint8_t& MD, const uint8_t& A, const uint8_t& B, const uint8_t& R){
-      uint8_t MD1 = (MD) & 0b11;
-      uint8_t MD2 = (MD >> 2) & 0b11;
-      uint8_t MD3 = (MD >> 4) & 0b11;
-      uint8_t X = _get_value(MD1, A, "'B'");
-      uint8_t Y = _get_value(MD2, B, "'A'");
-      _writedata(R, MD3, X%Y);
-    }
-    
-    void jmp(){
-    }
-    
-    void jeq(){
-    }
-    
-    void jlt(){
-    }
-    
-    void jgt(){
+    void jgt(uint8_t MD, uint8_t value){
     }
     
     void cmp(const uint8_t& MD, const uint8_t& A, const uint8_t& B){
       uint8_t MD1 = (MD) & 0b11;
       uint8_t MD2 = (MD >> 2) & 0b11;
       uint8_t MD3 = (MD >> 4) & 0b11;
-      uint8_t X = _get_value(MD1, A, "'B'");
-      uint8_t Y = _get_value(MD2, B, "'A'");
+      uint8_t X = _get_value(MD1, A, "'A'");
+      uint8_t Y = _get_value(MD2, B, "'B'");
       uint8_t res = X-Y;
-      _updflag(res);
+      _UpdFlg(MD3, res);
     }
     
     void halt(){
@@ -243,8 +256,7 @@ class Cpu{
             uint8_t A = _fetch(PRG);
             uint8_t B = _fetch(PRG);
             uint8_t R = _fetch(PRG);
-            
-            add(MD, A, B, R);
+            ALU(MD, A, B, R, 0b00);
             break;
           }
           
@@ -253,7 +265,7 @@ class Cpu{
             uint8_t A = _fetch(PRG);
             uint8_t B = _fetch(PRG);
             uint8_t R = _fetch(PRG);
-            sub(MD, A, B, R);
+            ALU(MD, A, B, R, 0b01);
             break;
           }
           
@@ -262,7 +274,7 @@ class Cpu{
             uint8_t A = _fetch(PRG);
             uint8_t B = _fetch(PRG);
             uint8_t R = _fetch(PRG);
-            mul(MD, A, B, R);
+            ALU(MD, A, B, R, 0b10);
             break;
           }
           
@@ -271,7 +283,7 @@ class Cpu{
             uint8_t A = _fetch(PRG);
             uint8_t B = _fetch(PRG);
             uint8_t R = _fetch(PRG);
-            div(MD, A, B, R);
+            ALU(MD, A, B, R, 0b11);
             break;
           }
           
@@ -280,33 +292,45 @@ class Cpu{
             uint8_t A = _fetch(PRG);
             uint8_t B = _fetch(PRG);
             uint8_t R = _fetch(PRG);
-            mod(MD, A, B, R);
+            ALU(MD, A, B, R, 0b100);
             break;
           }
           
+          // Here, MD has 2 uses.
+          // The first 2 bits are either 01 and 10
+          // referring to register or address
+          // the next 2 bits are 00 and 01
+          // 00 being a relative jump;
+          // and 01 being absolute.
           case 0b110:{
-            uint8_t MD = _fetch();
-            jmp(MD);
+            uint8_t MD = _fetch(PRG);
+            uint8_t value = _fetch(PRG);
+            jmp(MD, value);
             break;
           }
           
+          /*
           case 0b111:{
-            uint8_t MD = _fetch();
-            jeq(MD);
+            uint8_t MD = _fetch(PRG);
+            uint8_t value = _fetch(PRG);
+            jeq(MD, value);
             break;
           }
           
           case 0b1000:{
-            uint8_t MD = _fetch();
-            jlt(MD);
+            uint8_t MD = _fetch(PRG);
+            uint8_t value = _fetch(PRG);
+            jlt(MD, value);
             break;
           }
           
           case 0b1001:{
-            uint8_t MD = _fetch();
-            jgt(MD);
+            uint8_t MD = _fetch(PRG);
+            uint8_t value = _fetch(PRG);
+            jgt(MD, value);
             break;
           }
+          */
           
           default: {
             std::cout << "Invalid Opcode!" << std::endl;
@@ -321,9 +345,10 @@ class Cpu{
 int main(){
   Cpu computer;
   std::vector<uint8_t> PRG = {
-    0b1, 0b010101, 0b01, 0b01, 0b10,
+    0b1, 0b010000, 0b10, 0b10, 0b01,
     0b0
   };
+  
   computer.run(PRG);
   return 0;
 }
