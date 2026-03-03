@@ -65,8 +65,28 @@ Explanation: The first byte is 0b01, which is the 'add' instruction. The second 
 
 RAM Locations:
 * SDL2 *
-SDL2 has it's own dedicated section of RAM initialized, called VRAM. VRAM has 518,000 addresses available, 720x720. 1 pixel per address.
+SDL2 has it's own dedicated section of RAM initialized, called VRAM. VRAM has 518kb. Per address, the most significant byte determines whether or not the pixel is enabled. This system is bitmap only.
 
+The next 6 bits are RGB. A color is assigned per 2 bits. The most significant bit is whether or not it is that color, and the least significant bit is whether or not it is dark or light.
+
+The final bit, when on, halves the brightness intensity of the pixel.
+
+e.g 10000000 = Pixel is enabled. All RGB values are 0, meaning it is black.
+e.g 11000000 = Pixel is enabled. It is light red.
+
+---
+
+TODO: (top is easiest, bottom is hardest.)
+- Deprecate MMC, as MOV does the same thing, and more.
+- Implement try/catch handling for errors.
+- Create a 'log mode' parameter (writes to a log file every instruction)
+- Implement the saving and loading of programs to an external file.
+- Update opcodes to support the 1 byte limit
+- Change uint8_t to uint32_t (aka switching to a 32 bit system.)
+- Add debug options. (Stopping execution at a certain PC value, slowing the execution rate to 1 instruction per second, etc)
+- Write an assembler.
+- Add support for syscalls (e.g calling 'print'.)
+- Get SDL2 support working.
 */
 
 class Cpu{
@@ -211,20 +231,42 @@ class Cpu{
       uint8_t MD3 = (MD >> 4) & 0b11;
       uint8_t X = _get_value(MD1, A, "'A'");
       uint8_t Y = _get_value(MD2, B, "'B'");
-      _writedata(R, MD3, _math(A, B, arithmetic));
+      _writedata(R, MD3, _math(X, Y, arithmetic));
       _UpdFlg(MD3, R);
     }
     
     void jmp(uint8_t MD, uint8_t value){
+      uint8_t MD1 = (MD) & 0b11;
+      uint8_t relabs = (MD >> 2) & 0b11;
+      switch(relabs){
+        case 0b00:{
+          PC += _get_value(MD1, value, "'A'");
+          break;
+        }
+        
+        case 0b01:{
+          PC = _get_value(MD1, value, "'A'");
+          break;
+        }
+      }
     }
     
     void jeq(uint8_t MD, uint8_t value){
+      if (Zero == true){
+        jmp(MD, value);
+      }
     }
     
     void jlt(uint8_t MD, uint8_t value){
+      if (Sign == true){
+        jmp(MD, value);
+      }
     }
     
     void jgt(uint8_t MD, uint8_t value){
+      if (Sign == false && Zero == false){
+        jmp(MD, value);
+      }
     }
     
     void cmp(const uint8_t& MD, const uint8_t& A, const uint8_t& B){
@@ -251,7 +293,7 @@ class Cpu{
             running = false;
             break;
             
-          case 0b1: {
+          case 0b1: { // Add
             uint8_t MD = _fetch(PRG);
             uint8_t A = _fetch(PRG);
             uint8_t B = _fetch(PRG);
@@ -260,7 +302,7 @@ class Cpu{
             break;
           }
           
-          case 0b10:{
+          case 0b10:{ // Sub
             uint8_t MD = _fetch(PRG);
             uint8_t A = _fetch(PRG);
             uint8_t B = _fetch(PRG);
@@ -269,7 +311,7 @@ class Cpu{
             break;
           }
           
-          case 0b11:{
+          case 0b11:{ // Mul
             uint8_t MD = _fetch(PRG);
             uint8_t A = _fetch(PRG);
             uint8_t B = _fetch(PRG);
@@ -278,7 +320,7 @@ class Cpu{
             break;
           }
           
-          case 0b100:{
+          case 0b100:{ // Div
             uint8_t MD = _fetch(PRG);
             uint8_t A = _fetch(PRG);
             uint8_t B = _fetch(PRG);
@@ -287,7 +329,7 @@ class Cpu{
             break;
           }
           
-          case 0b101:{
+          case 0b101:{ // Mod
             uint8_t MD = _fetch(PRG);
             uint8_t A = _fetch(PRG);
             uint8_t B = _fetch(PRG);
@@ -298,7 +340,7 @@ class Cpu{
           
           // Here, MD has 2 uses.
           // The first 2 bits are either 01 and 10
-          // referring to register or address
+          // referring to register or address,
           // the next 2 bits are 00 and 01
           // 00 being a relative jump;
           // and 01 being absolute.
@@ -309,7 +351,6 @@ class Cpu{
             break;
           }
           
-          /*
           case 0b111:{
             uint8_t MD = _fetch(PRG);
             uint8_t value = _fetch(PRG);
@@ -330,7 +371,44 @@ class Cpu{
             jgt(MD, value);
             break;
           }
-          */
+          
+          case 0b1010:{
+            uint8_t MD = _fetch(PRG);
+            uint8_t A = _fetch(PRG);
+            uint8_t B = _fetch(PRG);
+            cmp(MD, A, B);
+            break;
+          }
+          
+          case 0b1011:{
+            gdi();
+            break;
+          }
+          
+          case 0b1100:{
+            //sdl();
+            break;
+          }
+          
+          case 0b1101:{
+            ens();
+            break;
+          }
+          
+          case 0b1110:{
+            mmc();
+            break;
+          }
+          
+          case 0b1111:{
+            read();
+            break;
+          }
+          
+          case 0b10000:{
+            mov();
+            break;
+          }
           
           default: {
             std::cout << "Invalid Opcode!" << std::endl;
@@ -345,7 +423,7 @@ class Cpu{
 int main(){
   Cpu computer;
   std::vector<uint8_t> PRG = {
-    0b1, 0b010000, 0b10, 0b10, 0b01,
+    0b1, 0b010000, 0b01, 0b10, 0b01,
     0b0
   };
   
