@@ -40,9 +40,8 @@ Instructions:
 0b00001100 : Sdl : enables SDL2 system. (Note: REFER TO RAM LOCATIONS FOR CONFIGS.)
 0b00001101 : Ens : Enables output to a save file.
 0b00001110 : Hlt : Halts the CPU.
-0b00001111 MD A B : Mmc R1, R2 : R1 = address, R2 = value. Modifies RAM directly.
-0b00010000 MD A : Read R1 : R1 = address
-0b00010001 MD A B : Mov R1, R2 : R1 = Value, R2 = target (ram address or register address)
+0b00001111 MD A : Read R1 : R1 = address
+0b00010000 MD A B : Mov R1, R2 : R1 = Value, R2 = target (ram address or register address)
 
 * Registers and flags *
 - Flags -
@@ -77,8 +76,8 @@ e.g 11000000 = Pixel is enabled. It is light red.
 ---
 
 TODO: (top is easiest, bottom is hardest.)
-- Deprecate MMC, as MOV does the same thing, and more.
 - Implement try/catch handling for errors.
+- Replace all instances of implicit typecasting to be static_cast<>.
 - Create a 'log mode' parameter (writes to a log file every instruction)
 - Implement the saving and loading of programs to an external file.
 - Update opcodes to support the 1 byte limit
@@ -86,8 +85,11 @@ TODO: (top is easiest, bottom is hardest.)
 - Add debug options. (Stopping execution at a certain PC value, slowing the execution rate to 1 instruction per second, etc)
 - Write an assembler.
 - Add support for syscalls (e.g calling 'print'.)
+- Add support for external syscalls (User-made syscalls)
 - Get SDL2 support working.
 */
+
+
 
 class Cpu{
   private:
@@ -280,6 +282,36 @@ class Cpu{
     }
     
     void halt(){
+      if (save_output){
+        // Declare file
+        std::fstream file(save_filename, std::ios::app);
+        
+        if (file.is_open()){
+          // Formatting for the file output
+          file  << "RAM (0 - 65535): [";
+          
+          // Iterate through items in RAM and append them one by one.
+          for (const auto& str : RAM){file << str << ", ";}
+          file << "]\nPC: " << PC << "\nRegisters (R0 - R31): [";
+          
+          // Do the same for registers as well
+          for (const auto& str : reg){file << str << ", ";}
+          file << "]";
+          file.close();
+        }
+        
+        std::cout << "Program has finished. Saving data to " << save_filename << std::endl;
+        std::exit(EXIT_SUCCESS);
+        }
+        
+        else{
+          std::cout << "Program has finished." << std::endl;
+          std::exit(EXIT_SUCCESS);
+        }
+    }
+    
+    void ens(){
+      save_output = true;
     }
     
     void run(const std::vector<uint8_t>& PRG){
@@ -381,7 +413,7 @@ class Cpu{
           }
           
           case 0b1011:{
-            gdi();
+            //gdi();
             break;
           }
           
@@ -396,17 +428,12 @@ class Cpu{
           }
           
           case 0b1110:{
-            mmc();
+            //read();
             break;
           }
           
           case 0b1111:{
-            read();
-            break;
-          }
-          
-          case 0b10000:{
-            mov();
+            //mov();
             break;
           }
           
@@ -422,7 +449,9 @@ class Cpu{
 
 int main(){
   Cpu computer;
+  Cpu ens();
   std::vector<uint8_t> PRG = {
+    0b1101,
     0b1, 0b010000, 0b01, 0b10, 0b01,
     0b0
   };
