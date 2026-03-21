@@ -76,6 +76,7 @@ e.g 11000000 = Pixel is enabled. It is light red.
 ---
 
 TODO: (top is easiest, bottom is hardest.)
+- Implement READ instruction.
 - Implement try/catch handling for errors.
 - Replace all instances of implicit typecasting to be static_cast<>.
 - Create a 'log mode' parameter (writes to a log file every instruction)
@@ -141,12 +142,12 @@ class Cpu{
     
     void _writeram(uint8_t R, uint8_t value){
       RAM[R] = value;
-      std::cout << RAM[R] << std::endl;
+      std::cout << RAM[R] << std::endl; // Debug code. Erase later.
     }
     
     void _writeregister(uint8_t R, uint8_t value){
       reg[R] = value;
-      std::cout << reg[R] << std::endl;
+      std::cout << reg[R] << std::endl; // Debug code. Erase later.
     }
     
     void _writedata(uint8_t loc, uint8_t MD3, uint8_t value){
