@@ -76,7 +76,6 @@ e.g 11000000 = Pixel is enabled. It is light red.
 ---
 
 TODO: (top is easiest, bottom is hardest.)
-- Implement READ instruction.
 - Implement try/catch handling for errors.
 - Replace all instances of implicit typecasting to be static_cast<>.
 - Create a 'log mode' parameter (writes to a log file every instruction)
@@ -86,11 +85,10 @@ TODO: (top is easiest, bottom is hardest.)
 - Add debug options. (Stopping execution at a certain PC value, slowing the execution rate to 1 instruction per second, etc)
 - Write an assembler.
 - Add support for syscalls (e.g calling 'print'.)
-- Add support for external syscalls (User-made syscalls)
+- Deprecate GDI, make a syscall version.
+- Add support for external syscalls (User-made syscalls, aka libraries)
 - Get SDL2 support working.
 */
-
-
 
 class Cpu{
   private:
@@ -142,12 +140,12 @@ class Cpu{
     
     void _writeram(uint8_t R, uint8_t value){
       RAM[R] = value;
-      std::cout << RAM[R] << std::endl; // Debug code. Erase later.
+      // std::cout << RAM[R] << std::endl; // Debug code. Comment later.
     }
     
     void _writeregister(uint8_t R, uint8_t value){
       reg[R] = value;
-      std::cout << reg[R] << std::endl; // Debug code. Erase later.
+      // std::cout << reg[R] << std::endl; // Debug code. Comment later.
     }
     
     void _writedata(uint8_t loc, uint8_t MD3, uint8_t value){
@@ -282,6 +280,14 @@ class Cpu{
       _UpdFlg(MD3, res);
     }
     
+    void gdi(){
+      std::cout << "This command currently does nothing and exists only to make the compile happy. It's described features as per the documentation will be implemented in the future." << std::endl;
+    }
+    
+    void sdl(){
+      std::cout << "This command currently does nothing and exists only to make the compile happy. It's described features as per the documentation will be implemented in the future." << std::endl;
+    }
+    
     void halt(){
       if (save_output){
         // Declare file
@@ -306,13 +312,21 @@ class Cpu{
         }
         
         else{
-          std::cout << "Program has finished." << std::endl;
+          // std::cout << "Program has finished." << std::endl; // Debug code. Enable only if you suspect your code shouldn't be stopping to see why.
           std::exit(EXIT_SUCCESS);
         }
     }
     
     void ens(){
       save_output = true;
+    }
+    
+    void read(const uint8_t& MD, const uint8_t& value){
+      uint8_t MD1 = MD & 0b11;
+      std::cout << _get_value(MD1, value, "'read value'");
+    }
+    
+    void mov(const uint8_t& MD, const uint8_t& value){
     }
     
     void run(const std::vector<uint8_t>& PRG){
@@ -429,12 +443,14 @@ class Cpu{
           }
           
           case 0b1110:{
-            //read();
+            uint8_t MD = _fetch(PRG);
+            uint8_t A = _fetch(PRG);
+            read(MD, A);
             break;
           }
           
           case 0b1111:{
-            //mov();
+            mov();
             break;
           }
           
@@ -450,12 +466,11 @@ class Cpu{
 
 int main(){
   Cpu computer;
-  Cpu ens();
+  computer.ens();
   std::vector<uint8_t> PRG = {
-    0b1101,
-    0b1, 0b010000, 0b01, 0b10, 0b01,
+    0b1110, 0b00, 0b01000001,
     0b0
-  };
+  }; // This program tests the 'read()' assembly instruction by printing the ASCII character 'A'.
   
   computer.run(PRG);
   return 0;
