@@ -338,13 +338,46 @@ class Cpu{
       save_output = true;
     }
     
-    void mov(const uint8_t& MD, const uint8_t& value){
+    void mov(const uint8_t& MD, const uint8_t& A, const uint8_t& B){
+      uint8_t MD1 = (MD) & 0b11;
+      uint8_t MD2 = (MD >> 2) & 0b11;
+      uint8_t source_value = _get_value(MD1, A, "'A'");
+      switch(MD2){
+        case 0b00:{
+          throw std::invalid_argument("Invalid Parameter : Immediate cannot be used for target parameter.");
+          break;
+        }
+        
+        case 0b01:{
+          _writeregister(B, source_value);
+          break;
+        }
+        
+        case 0b10:{
+          _writeram(B, source_value);
+          break;
+        }
+        
+        default:{
+          _0b11exception("'Mov'");
+          break;
+        }
+      }
     }
 
     void interrupt(const uint8_t MD, const uint8_t& value){
       switch (value){
         case 0b0:{ // Read syscall. AKA print()
-          // Code later.
+          uint8_t message_location = reg[0];
+          uint8_t length = reg[1];
+          uint8_t return_PC = PC;
+          PC = message_location;
+          for (int i = 0; i < length; i++){
+            std::cout << (char)RAM.at(PC);
+            PC++;
+          }
+          PC = return_PC;
+          
           break;
         }
         
@@ -484,9 +517,10 @@ class Cpu{
           
           case 0b1101:{
             uint8_t MD = _fetch(PRG);
-            uint8_t value = _fetch(PRG);
-            log(logging, "MOV", {std::to_string(MD), std::to_string(value)});
-            mov(MD, value);
+            uint8_t A = _fetch(PRG);
+            uint8_t B = _fetch(PRG);
+            log(logging, "MOV", {std::to_string(MD), std::to_string(A), std::to_string(B)});
+            mov(MD, A, B);
             break;
           }
 
@@ -512,9 +546,12 @@ int main(){
   Cpu computer;
   bool Logging = true;
   std::vector<uint8_t> PRG = {
-    0b1110, 0b0, 0b01000001,
+    0b1101, 0b0100, 0b0, 0b0,
+    0b1101, 0b0100, 0b1, 0b1,
+    0b1101, 0b1000, 0b01000001, 0b0,
+    0b1110, 0b0, 0b0,
     0b0
-  }; // This program tests the 'int' syscall by calling INT 0b0 to print ASCII 'A".
+  }; // This program tests the INT syscall by printing 'A' to the console.
   
   computer.run(Logging, PRG);
   return 0;
