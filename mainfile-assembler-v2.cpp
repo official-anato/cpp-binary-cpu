@@ -3,6 +3,11 @@
 >> Written by Anato.
 */
 
+// Note to self: Prepare the assembler for the INT instruction.
+// This means that we will be removing the read instruction.
+// Mainfile hasnt been modified yet to accept the INT instruction, but
+// Prepare the assembler to do so. This will make string manipulation easier.
+
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -10,6 +15,7 @@
 #include <cstdint>
 #include <map>
 #include <sstream>
+#include <bitset>
 
 int main(int argc, char* argv[]) {
   if (argc < 3) {
@@ -18,15 +24,6 @@ int main(int argc, char* argv[]) {
     return 1;
   }
   std::vector<std::string> output;
-
-  /* THIS IS REFERENCE CODE. DO NOT TOUCH.
-  std::cout << "Program Name: " << argv[0] << std::endl;
-  std::cout << "Number of arguments: " << argc - 1 << std::endl;
-  for (int i = 1; i < argc; ++i) {
-    std::cout << "Argument " << i << ": " << argv[i] << std::endl;
-  }
-  return 0;
-  */
 
   // Ignore argv[0]
   // argv[1] is the source code filename
@@ -37,6 +34,7 @@ int main(int argc, char* argv[]) {
   std::fstream file(argv[1], std::fstream::in);
   if (file.is_open()){
     std::map<std::string, uint8_t> ISA = {
+      {"HLT", 0b00000000},
       {"ADD", 0b00000001},
       {"SUB", 0b00000010},
       {"MUL", 0b00000011},
@@ -49,9 +47,8 @@ int main(int argc, char* argv[]) {
       {"CMP", 0b00001010},
       {"SDL", 0b00001011},
       {"ENS", 0b00001100},
-      {"HLT", 0b00001101},
-      {"READ", 0b00001110},
-      {"MOV", 0b00001111}
+      {"MOV", 0b00001101},
+      {"INT", 0b00001110}
    };
   
     std::stringstream buffer;
@@ -69,30 +66,49 @@ int main(int argc, char* argv[]) {
     
     // Compiling section
     for (const auto& inst: lines){
-      if (inst[0] == '+') continue;
-      std::cout << inst;
+      if (inst[0] == '!') continue;
+      // std::cout << inst;
       // Extract the first token (opcode) by finding the space
-      size_t spacePos = inst.find(' ');
-      std::string opcode = (spacePos == std::string::npos) ? inst : inst.substr(0, spacePos);
-      std::cout << ISA.at(opcode) << std::endl;
-    }
-  
-    // This should be last.
-    // This is when process 1 finishes compiling and sends the output to the output vector.
-    for (const auto& line : lines){output.push_back(line);}
-  }
+      std::string opcode = inst.substr(0, 3);
+      output.push_back("0b" + std::bitset<8>(ISA.at(opcode)).to_string());
+      
+      // With opcodes done, parameters are next.
+      // Remove the opcode.
+      // Each line, remove all commas.
+      // Remove all comments.
+      // Separate the parameters, convert to binary, and push_back() to output.
+      std::vector<std::string> parameters;
+      std::string line_copy = inst;
+      line_copy.erase(0, 4);
+      size_t commentpos = line_copy.find('!');
+      if (commentpos != std::string::npos) {
+        line_copy.erase(commentpos, line_copy.size());
+      }
 
+      size_t commapos = line_copy.find(',');
+      if (commapos != std::string::npos) {
+        parameters.push_back(line_copy.substr(0, commapos));
+        line_copy.erase(0, commapos + 1);
+        parameters.push_back(line_copy);
+      }
+
+      for (std::string item : parameters){
+        output.push_back(item);
+      }
+      
+    }
+  }
+  
   else{
     std::cout << "File not found!" << std::endl;
   }
-  
 
   // Process 2: Output the compiled code.
   
   // Process 2.1: Output to terminal if argv[2] is 1.
   if (*argv[2] == '1'){
    for (const auto& line : output){
-     std::cout << line << std::endl;
+     std::cout << line << ", ";
     }
   }
 
@@ -101,7 +117,7 @@ int main(int argc, char* argv[]) {
     std::fstream file(std::string(argv[3]), std::fstream::out);
     if (file.is_open()){
       for (const auto& line : output){
-        file << line << std::endl;
+        file << line << ", ";
        }
        file.close();
     }

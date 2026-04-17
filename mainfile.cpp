@@ -1,7 +1,7 @@
 /*
-CURRENTLY WIP PROJECT
-A simplified custom assembly language (Binary Rewrite edition)
-Written by Anato.
+>> CURRENTLY WIP PROJECT
+>> A simplified custom assembly language
+>> Written by Anato.
 */
 
 #include <vector>
@@ -36,11 +36,11 @@ Instructions:
 0b00001010 MD A B : Cmp R1, R2 : R1 = X, R2 = Y
 
 * Machine control *
-0b00001100 : Sdl : enables SDL2 system. (Note: REFER TO RAM LOCATIONS FOR CONFIGS.)
-0b00001101 : Ens : Enables output to a save file.
-0b00001110 : Hlt : Halts the CPU.
-0b00001111 MD A : Read R1 : R1 = address
-0b00010000 MD A B : Mov R1, R2 : R1 = Value, R2 = target (ram address or register address)
+0b00000000 : Hlt : Halts the CPU.
+0b00001011 : Sdl : enables SDL2 system. (Note: REFER TO RAM LOCATIONS FOR CONFIGS.)
+0b00001100 : Ens : Enables output to a save file.
+0b00001101 MD A : Read R1 : R1 = address
+0b00001110 MD A B : Mov R1, R2 : R1 = Value, R2 = target (ram address or register address)
 
 * Registers and flags *
 - Flags -
@@ -49,7 +49,7 @@ CF : Carry flag - true or false, determines if the last operation has become lar
 SF : Sign Flag - true or false, determines if the last operstion resulted in a negative or positive number. True for Negative, False for Positive.
 
 * Commenting *
-To make a comment, you use the '+' symbol.
+To make a comment, you use the '!' symbol.
 
 - Registers -
 R0 to R31 are available for usage. This totals up to 32 registers, BUT NOTE THAT R32 IS NOT AVAILABLE.
@@ -338,12 +338,27 @@ class Cpu{
       save_output = true;
     }
     
-    void read(const uint8_t& MD, const uint8_t& value){
-      uint8_t MD1 = MD & 0b11;
-      std::cout << _get_value(MD1, value, "'read value'");
-    }
-    
     void mov(const uint8_t& MD, const uint8_t& value){
+    }
+
+    void interrupt(const uint8_t MD, const uint8_t& value){
+      switch (value){
+        case 0b0:{ // Read syscall. AKA print()
+          // Code later.
+          break;
+        }
+        
+        case 0b01:{ // GDI Syscall. AKA input()
+          // Code comes later. Too complex.
+          break;
+        }
+        
+        default:{
+          throw std::invalid_argument("Invalid Interrupt: This interrupt does not exist.");
+          break;
+        }
+      }
+
     }
     
     void run(const bool& logging, const std::vector<uint8_t>& PRG){
@@ -469,15 +484,17 @@ class Cpu{
           
           case 0b1101:{
             uint8_t MD = _fetch(PRG);
-            uint8_t A = _fetch(PRG);
-            log(logging, "READ", {std::to_string(MD), std::to_string(A)});
-            read(MD, A);
+            uint8_t value = _fetch(PRG);
+            log(logging, "MOV", {std::to_string(MD), std::to_string(value)});
+            mov(MD, value);
             break;
           }
-          
+
           case 0b1110:{
-            log(logging, "MOV", {});
-            //mov();
+            uint8_t MD = _fetch(PRG);
+            uint8_t value = _fetch(PRG);
+            log(logging, "INT", {std::to_string(MD), std::to_string(value)});
+            interrupt(MD, value);
             break;
           }
           
@@ -495,9 +512,9 @@ int main(){
   Cpu computer;
   bool Logging = true;
   std::vector<uint8_t> PRG = {
-    0b1101, 0b00, 0b01000001,
+    0b1110, 0b0, 0b01000001,
     0b0
-  }; // This program tests the 'read()' assembly instruction by printing the ASCII character 'A'.
+  }; // This program tests the 'int' syscall by calling INT 0b0 to print ASCII 'A".
   
   computer.run(Logging, PRG);
   return 0;
