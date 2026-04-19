@@ -1,9 +1,13 @@
+### This is the planning file for the repository.
+### This will hold any thoughts I have on how to work on the codebase next.
+### Which means that this will have things removed and added.
+
 ### Assembler planning
 - How to create the MD byte.
 Put each parameter in a vector
 Create a new map. `std::map<std::string, uint8_t> MD_DETERMINE = {{"imm", 0b00}, {"reg", 0b01}, {"addr", 0b10}};`
 Create a variable. `std::vector<std::string> MD_final = {};`
-Iterate through each item of the vector
+Iterate through each item of the paramter vector
 If the item starts with R, then it's a register
 If the item starts with '@', then it's an address
 If the item starts with neither, it's an immediate
@@ -30,7 +34,3 @@ Interrupt() calls `std::getline(std::cin >> std::ws, X);` (X being a placeholder
 When the user finally presses enter, Interrupt() writes that input to the address given in R2
 Interrupt sets R0 to the amount of bytes the user wrote.
 Interrupt() returns the control back to the program.
-
-- How endianness will be handled when it's finally time
-We will be using Big Endian to make it easier for myself;
-But eventually, we will transition to Little Endian to make some math operations faster.

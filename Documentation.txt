@@ -6,16 +6,17 @@
 Instructions:
 + NOTE: All mentions of R(x) can be interchanged with immediate or address values as well.
 + NOTE: MD refers to a single-byte parameter. It allows you to tell the CPU what the next 2 parameters' type are. Refer to the MD section for more information.
++ All instructions do not use a comma to separate the parameters, only spaces.
 * Arithmetic *
 + R1 = A
 + R2 = B
 + R3 = Result address. This does not accept an immediate value,
 
-ADD R1, R2, R3
-SUB R1, R2, R3
-MUL R1, R2, R3
-DIV R1, R2, R3
-MOD R1, R2, R3
+ADD R1 R2 R3
+SUB R1 R2 R3
+MUL R1 R2 R3
+DIV R1 R2 R3
+MOD R1 R2 R3
 
 * Branching *
 JMP R1 : R1 = destination ; Standard jump instruction, moves PC to the byte given.
@@ -24,14 +25,14 @@ JLT R1 : R1 = destination ; Jump's if A is less than B.
 JGT R1 : R1 = destination ; Jump's if A is more than B.
 
 * Comparison *
-CMP R1, R2 : R1 = X, R2 = Y ; Compare's two values.
+CMP R1 R2 : R1 = X, R2 = Y ; Compare's two values.
 
 * Machine control *
-INT : Call's the kernel. Important for things like printing. Refer to section INT CODES for further details.
+INT R0 : R0 = Interrupt Code : Call's the kernel. Important for things like printing. Refer to section INT CODES for further details.
 HLT : Halts the CPU.
 SDL : enables SDL2 system. (Note: REFER TO RAM LOCATIONS FOR CONFIGS.)
 ENS : Enables output to a save file.
-MOV R1, R2 : R1 = Value, R2 = target (ram address or register address)
+MOV R1 R2 : R1 = Value, R2 = target (ram address or register address)
 
 * Registers and flags *
 - Flags -
@@ -49,7 +50,6 @@ Endianness:
 This system uses Big Endian, but will later move to Little Endian.
 
 INT Codes:
-+ Despite being called INT, this instruction works more like SYSCALL.
 For now, there are only 2 codes that you can call.
 * 1 *
 DESC: Call's the kernel to print to the terminal.
