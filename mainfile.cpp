@@ -10,91 +10,6 @@
 #include <string>
 #include <cstdint>
 
-/*
--- DOCS --
-Instructions:
-+ NOTE: All mentions of R(x) can be interchanged with immediate values as well.
-+ NOTE: MD refers to a single-byte parameter. It allows you to tell the CPU what the next 2 parameters' type are. Refer to the MD section for more information.
-* Arithmetic *
-0b00000001 MD A B R : Add R1, R2, R3 : R1 = X, R2 = Y, R3 = result
-
-0b00000010 MD A B R : Sub R1, R2, R3 : R1 = X, R2 = Y, R3 = result
-
-0b00000011 MD A B R : Mul R1, R2, R3 : R1 = X, R2 = Y, R3 = result
-
-0b00000100 MD A B R : Div R1, R2, R3 : R1 = X, R2 = Y, R3 = result
-
-0b00000101 MD A B R : Mod R1, R2, R3 : R1 = X, R2 = Y, R3 = result
-
-* Branching *
-0b00000110 MD A : Jmp R1 : R1 = destination
-0b00000111 MD A : Jeq R1 : R1 = destination
-0b00001000 MD A : Jlt R1 : R1 = destination
-0b00001001 MD A : Jgt R1 : R1 = destination
-
-* Comparison *
-0b00001010 MD A B : Cmp R1, R2 : R1 = X, R2 = Y
-
-* Machine control *
-0b00000000 : Hlt : Halts the CPU.
-0b00001011 : Sdl : enables SDL2 system. (Note: REFER TO RAM LOCATIONS FOR CONFIGS.)
-0b00001100 : Ens : Enables output to a save file.
-0b00001101 MD A : Read R1 : R1 = address
-0b00001110 MD A B : Mov R1, R2 : R1 = Value, R2 = target (ram address or register address)
-
-* Registers and flags *
-- Flags -
-ZF : Zero flag - true or false, determines whether last operation resulted in zero or not.
-CF : Carry flag - true or false, determines if the last operation has become larger than 65535
-SF : Sign Flag - true or false, determines if the last operstion resulted in a negative or positive number. True for Negative, False for Positive.
-
-* Commenting *
-To make a comment, you use the '!' symbol.
-
-- Registers -
-R0 to R31 are available for usage. This totals up to 32 registers, BUT NOTE THAT R32 IS NOT AVAILABLE.
-
-* MD Section *
-As mentioned, MD is a single-byte parameter that comes after the instruction byte.
-
-00 : imm
-01 : reg
-10 : adr
-
-Example: 0b01 0b010101 0b01 0b01 0b10
-Explanation: The first byte is 0b01, which is the 'add' instruction. The second byte is the MD byte. 01 is register, so, 010101 says that the next three parameters are all referring to the register. Next is 0b01, which according to the MD byte is register 1, and so pulls data from that. The one after that is also 0b01. And finally, 0b10 is register 2, which is where we will store the data.
-
-RAM Locations:
-* SDL2 *
-SDL2 has it's own dedicated section of RAM initialized, called VRAM. VRAM has 518kb. Per address, the most significant byte determines whether or not the pixel is enabled. This system is bitmap only.
-
-The next 6 bits are RGB. A color is assigned per 2 bits. The most significant bit is whether or not it is that color, and the least significant bit is whether or not it is dark or light.
-
-The final bit, when on, halves the brightness intensity of the pixel.
-
-e.g 10000000 = Pixel is enabled. All RGB values are 0, meaning it is black.
-e.g 11000000 = Pixel is enabled. It is light red.
-
----
-
-TODO: (top is easiest, bottom is hardest.)
-- Fix output file bug where register etc have an extra ", " at the end.
-- Implement try/catch handling for errors.
-- Transition from Harvard architecture to Von Neumann architecture. (Load instructions into RAM.)
-- Replace all instances of implicit typecasting to be static_cast<>.
-- Make log system more detailed by tracking values as such register and ram.
-- Implement the saving and loading of programs to an external file.
-- Update opcodes to support the 1 byte limit
-- Change uint8_t to uint32_t (aka switching to a 32 bit system.)
-- Add debug options. (Stopping execution at a certain PC value, slowing the execution rate to 1 instruction per second, etc)
-- Add support for syscalls (e.g calling 'print'.)
-- Create an "INT" instruction to interrupt the kernel and access syscalls.
-- Deprecate READ, make a syscall version.
-- Deprecate GDI, make a syscall version.
-- Add support for external syscalls (User-made syscalls, aka libraries)
-- Get SDL2 support working.
-*/
-
 class Cpu{
   private:
     bool Zero = false;
@@ -370,12 +285,32 @@ class Cpu{
         case 0b0:{ // Read syscall. AKA print()
           uint8_t message_location = reg[0];
           uint8_t length = reg[1];
+          uint8_t mode = reg[2];
+          // if mode is 0, print as char.
+          // If 1, print as string. If the string is "2" then it must print "2", not the ASCII value "2".
+          // If 2, print as int.
           uint8_t return_PC = PC;
           PC = message_location;
           for (int i = 0; i < length; i++){
-            std::cout << (char)RAM.at(PC);
+            switch (mode){
+              case 0b00:{
+                std::cout << (char)RAM.at(PC);
+                break;
+              }
+              
+              case 0b01:{
+                std::cout << RAM.at(PC);
+                break;
+              }
+              
+              case 0b10:{
+                std::cout << (int)RAM.at(PC);
+                break;
+              }
+            }
             PC++;
           }
+
           PC = return_PC;
           
           break;
@@ -396,7 +331,7 @@ class Cpu{
     
     void run(const bool& logging, const std::vector<uint8_t>& PRG){
       bool running = true;
-      while (running){
+      while (running && PC < (int)PRG.size()){
         uint8_t opcode = PRG.at(PC);
         PC++;
         switch(opcode){
@@ -546,12 +481,17 @@ int main(){
   Cpu computer;
   bool Logging = true;
   std::vector<uint8_t> PRG = {
-    0b1101, 0b0100, 0b0, 0b0,
-    0b1101, 0b0100, 0b1, 0b1,
-    0b1101, 0b1000, 0b01000001, 0b0,
-    0b1110, 0b0, 0b0,
-    0b0
-  }; // This program tests the INT syscall by printing 'A' to the console.
+    0b00001100, //ENS
+    0b00001101, 0b0100, 0b10, 0b11, // MOV 2, R3
+    0b00000001, 0b010100, 0b00001010, 0b11, 0b100, // ADD 10, R3, R4
+    0b00001101, 0b1001, 0b100, 0b0, // MOV R4, @0
+    0b00001101, 0b0100, 0b0, 0b0, // MOV 0, R0 ! Location
+    0b00001101, 0b0100, 0b1, 0b1, // MOV 1, R1 ! Length
+    0b00001101, 0b0100, 0b10, 0b10, // MOV 2, R2 ! Mode
+    0b00001110, 0b00000000, 0b00000000, // INT 0
+    0b00000000 // HLT
+  }; // This program tests the INT syscall by printing 2+10 to the console.
+  // It also tests my patience because I forgot how own my opcodes work.
   
   computer.run(Logging, PRG);
   return 0;

@@ -3,11 +3,6 @@
 >> Written by Anato.
 */
 
-// Note to self: Prepare the assembler for the INT instruction.
-// This means that we will be removing the read instruction.
-// Mainfile hasnt been modified yet to accept the INT instruction, but
-// Prepare the assembler to do so. This will make string manipulation easier.
-
 #include <vector>
 #include <iostream>
 #include <fstream>

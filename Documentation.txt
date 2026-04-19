@@ -1,0 +1,78 @@
+-- DOCS --
++ Currently, all instructions are required to be capitalized;
++ But that will change in the future when the compiler is updated.
++ For now, when your program fails to compile, check the capitalization of your code.
+
+Instructions:
++ NOTE: All mentions of R(x) can be interchanged with immediate or address values as well.
++ NOTE: MD refers to a single-byte parameter. It allows you to tell the CPU what the next 2 parameters' type are. Refer to the MD section for more information.
+* Arithmetic *
++ R1 = A
++ R2 = B
++ R3 = Result address. This does not accept an immediate value,
+
+ADD R1, R2, R3
+SUB R1, R2, R3
+MUL R1, R2, R3
+DIV R1, R2, R3
+MOD R1, R2, R3
+
+* Branching *
+JMP R1 : R1 = destination ; Standard jump instruction, moves PC to the byte given.
+JEQ R1 : R1 = destination ; Jump instruction, only executes if the Zero flag is True.
+JLT R1 : R1 = destination ; Jump's if A is less than B.
+JGT R1 : R1 = destination ; Jump's if A is more than B.
+
+* Comparison *
+CMP R1, R2 : R1 = X, R2 = Y ; Compare's two values.
+
+* Machine control *
+INT : Call's the kernel. Important for things like printing. Refer to section INT CODES for further details.
+HLT : Halts the CPU.
+SDL : enables SDL2 system. (Note: REFER TO RAM LOCATIONS FOR CONFIGS.)
+ENS : Enables output to a save file.
+MOV R1, R2 : R1 = Value, R2 = target (ram address or register address)
+
+* Registers and flags *
+- Flags -
+ZF : Zero flag - true or false, determines whether last operation resulted in zero or not.
+CF : Carry flag - true or false, determines if the last operation has become larger than 65535
+SF : Sign Flag - true or false, determines if the last operstion resulted in a negative or positive number. True for Negative, False for Positive.
+
+* Commenting *
+To make a comment, you use the '!' symbol.
+
+- Registers -
+R0 to R31 are available for usage. This totals up to 32 registers.
+
+Endianness:
+This system uses Big Endian, but will later move to Little Endian.
+
+INT Codes:
++ Despite being called INT, this instruction works more like SYSCALL.
+For now, there are only 2 codes that you can call.
+* 1 *
+DESC: Call's the kernel to print to the terminal.
+PARAMETERS:
+ - LOC: Memory address of the data you intend to print.
+ - LEN: How many bytes to read, starting from that address.
+ - MODE: Mode 0 prints the ASCII character associated, Mode 1 prints the byte as a string, Mode 2 prints the byte as an integer.
++ These parameters can be set via R0 (LOC), R1 (LEN), and R2 (MODE).
+
+* 2 *
+DESC: Call's the kernel for receiving input from the user.
+PARAMETERS:
+ - SRC: The input the kernel reads from. Currently only allows '0', as that is the keyboard. This is R0.
+ - ADR: The address the kernel writes the input data to. This is R1.
++ When the kernel is done, it write's the amount of data it received from the user to R0.
+
+RAM Locations:
+* SDL2 *
+SDL2 has it's own dedicated section of RAM initialized, called VRAM. VRAM has 518kb. Per address, the most significant byte determines whether or not the pixel is enabled. This system is bitmap only.
+
+The next 6 bits are RGB. A color is assigned per 2 bits. The most significant bit is whether or not it is that color, and the least significant bit is whether or not it is dark or light.
+
+The final bit, when on, halves the brightness intensity of the pixel.
+
+e.g 10000000 = Pixel is enabled. All RGB values are 0, meaning it is black.
+e.g 11000000 = Pixel is enabled. It is light red.

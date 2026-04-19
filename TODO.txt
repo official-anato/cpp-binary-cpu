@@ -1,0 +1,13 @@
+TODO: (top is easiest, bottom is hardest.)
+- Rewrite documentation to support the changes made.
+- Fix output file bug where registers etc have an extra ", " at the end.
+- Implement try/catch handling for errors.
+- Transition from Harvard architecture to Von Neumann architecture. (Load instructions into RAM.)
+- Replace all instances of implicit typecasting to be static_cast<>.
+- Make log system more detailed by tracking values as such register and ram.
+- Implement the saving and loading of programs to-from an external file.
+- Update opcodes to support the 1 byte limit
+- Change uint8_t to uint32_t (aka switching to a 32 bit system.)
+- Add debug options. (Stopping execution at a certain PC value, slowing the execution rate to 1 instruction per second, etc)
+- Add support for external syscalls (User-made syscalls, aka libraries)
+- Get SDL2 support working.

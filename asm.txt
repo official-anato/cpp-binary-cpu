@@ -1,0 +1,11 @@
+! Exclamation marks are comments.
+ENS ! Enable output.
+MOV 2, R2 ! X = 2
+ADD 10, R2, R2 ! X+10 = 12
+
+! Print the answer to the console.
+MOV 0, R0 ! Message location. Address 0.
+MOV 2, R1 ! Length. 2 characters.
+MOV 2, R2 ! Print as int.
+INT 0 ! Call print() syscall.
+HLT
