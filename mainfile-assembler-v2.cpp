@@ -105,9 +105,9 @@ int main(int argc, char* argv[]) {
       // MD Byte Generation
       // Create the dictionary for determining if a parameter is immediate, a register, or an address.
       std::map<std::string, std::string> MD_DETERMINE = {
-        {"imm", "0b00"},
-        {"reg", "0b01"},
-        {"addr", "0b10"}
+        {"imm", "00"},
+        {"reg", "01"},
+        {"addr", "10"}
       };
       // Create the final output for the MD Byte
       std::vector<std::string> MD_final = {};
@@ -118,27 +118,34 @@ int main(int argc, char* argv[]) {
       // Append the determined prefix to MD_final
       
       std::vector<std::string> REV_parameters(parameters.rbegin(), parameters.rend());
-      std::vector<std::string> binary_parameters;
       for (const std::string item : REV_parameters){
-        std::string binaryitem;
         if (item.substr(0,1) == "R"){
           MD_final.push_back(MD_DETERMINE.at("reg"));
-          binaryitem = std::bitset<8>(std::stoi(item.substr(1))).to_string();
         }
 
         else if (item.substr(0,1) == "@"){
           MD_final.push_back(MD_DETERMINE.at("addr"));
-          binaryitem = std::bitset<8>(std::stoi(item.substr(1))).to_string();
         }
 
         else{
           MD_final.push_back(MD_DETERMINE.at("imm"));
-          binaryitem = std::bitset<8>(std::stoi(item)).to_string(); // Why does it make stoi not work??
         }
-        
-        binary_parameters.push_back(binaryitem);
       }
 
+      // Generate binary parameters
+      std::vector<std::string> binary_parameters;
+      std::string binaryitem;
+      for (const std::string item : parameters){
+        if (item.substr(0,1) == "R" || item.substr(0,1) == "@"){
+          binaryitem = std::bitset<8>(std::stoi(item.substr(1))).to_string();
+        }
+        
+        else{
+          binaryitem = std::bitset<8>(std::stoi(item)).to_string();
+        }
+        binary_parameters.push_back(binaryitem);
+      }
+      
       // Join MD_final into one string
       std::string MD_output = "";
       for (const std::string& item : MD_final){
