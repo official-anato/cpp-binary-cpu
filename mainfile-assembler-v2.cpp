@@ -143,7 +143,7 @@ int main(int argc, char* argv[]) {
         else{
           binaryitem = std::bitset<8>(std::stoi(item)).to_string();
         }
-        binary_parameters.push_back(binaryitem);
+        binary_parameters.push_back("0b" + binaryitem);
       }
       
       // Join MD_final into one string
