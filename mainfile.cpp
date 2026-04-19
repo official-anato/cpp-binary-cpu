@@ -177,12 +177,12 @@ class Cpu{
       uint8_t relabs = (MD >> 2) & 0b11;
       switch(relabs){
         case 0b00:{
-          PC += _get_value(MD1, value, "'A'");
+          PC = _get_value(MD1, value, "'A'");
           break;
         }
         
         case 0b01:{
-          PC = _get_value(MD1, value, "'A'");
+          PC += _get_value(MD1, value, "'A'");
           break;
         }
       }
@@ -209,11 +209,10 @@ class Cpu{
     void cmp(const uint8_t& MD, const uint8_t& A, const uint8_t& B){
       uint8_t MD1 = (MD) & 0b11;
       uint8_t MD2 = (MD >> 2) & 0b11;
-      uint8_t MD3 = (MD >> 4) & 0b11;
       uint8_t X = _get_value(MD1, A, "'A'");
       uint8_t Y = _get_value(MD2, B, "'B'");
       uint8_t res = X-Y;
-      _UpdFlg(MD3, res);
+      __UpdFlg(res);
     }
     
     void sdl(){
