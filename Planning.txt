@@ -2,21 +2,6 @@
 ### This will hold any thoughts I have on how to work on the codebase next.
 ### Which means that this will have things removed and added.
 
-### Assembler planning
-- How to create the MD byte.
-Put each parameter in a vector
-Create a new map. `std::map<std::string, uint8_t> MD_DETERMINE = {{"imm", 0b00}, {"reg", 0b01}, {"addr", 0b10}};`
-Create a variable. `std::vector<std::string> MD_final = {};`
-Iterate through each item of the paramter vector
-If the item starts with R, then it's a register
-If the item starts with '@', then it's an address
-If the item starts with neither, it's an immediate
-Use MD_DETERMINE.at() on the item
-With the response, append it to MD_final.
-+ Note that instructions with an MD byte follow C, B, A - A, B, C.
-+ C, B, A is the MD byte, and A, B, C are the parameters.
-After all items have been iterated through, call output.push_back() with "0b" prefix before MD_final. Still use the 8-bit padding to be consistent.
-
 - How to implement warnings/errors
 This section will be left blank for now, as this is a comfort feature and not a priority.
 

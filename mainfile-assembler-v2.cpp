@@ -147,13 +147,20 @@ int main(int argc, char* argv[]) {
       }
       
       // Join MD_final into one string
+      // NOTE: Modify this later to still use the 8-bit padding to be consistent.
       std::string MD_output = "";
       for (const std::string& item : MD_final){
-        MD_output += item;
+        if (MD_output == ""){
+          MD_output += "0b" + item;
+        }
+
+        else{
+          MD_output += item;
+        }
       }
 
       std::vector<std::string> parameters_final = {};
-      parameters_final.push_back("0b" + MD_output);
+      if (MD_output != ""){parameters_final.push_back(MD_output);}
       for (const std::string& item : binary_parameters){
         parameters_final.push_back(item);
       }
@@ -181,10 +188,14 @@ int main(int argc, char* argv[]) {
   else if (*argv[2] == '2'){
     std::fstream file(std::string(argv[3]), std::fstream::out);
     if (file.is_open()){
+      std::string out_string;
       for (const auto& line : output){
-        file << line << ", ";
-       }
-       file.close();
+        out_string += line + ", ";
+      }
+      out_string.pop_back();
+      out_string.pop_back();
+      file << out_string;
+      file.close();
     }
 
     else{

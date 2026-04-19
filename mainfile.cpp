@@ -481,17 +481,7 @@ int main(){
   Cpu computer;
   bool Logging = true;
   std::vector<uint8_t> PRG = {
-    0b00001100, //ENS
-    0b00001101, 0b0100, 0b10, 0b11, // MOV 2, R3
-    0b00000001, 0b010100, 0b00001010, 0b11, 0b100, // ADD 10, R3, R4
-    0b00001101, 0b1001, 0b100, 0b0, // MOV R4, @0
-    0b00001101, 0b0100, 0b0, 0b0, // MOV 0, R0 ! Location
-    0b00001101, 0b0100, 0b1, 0b1, // MOV 1, R1 ! Length
-    0b00001101, 0b0100, 0b10, 0b10, // MOV 2, R2 ! Mode
-    0b00001110, 0b00000000, 0b00000000, // INT 0
-    0b00000000 // HLT
-  }; // This program tests the INT syscall by printing 2+10 to the console.
-  // It also tests my patience because I forgot how own my opcodes work.
+  };
   
   computer.run(Logging, PRG);
   return 0;
