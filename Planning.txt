@@ -14,8 +14,8 @@ This section will be left blank for now, as this is a comfort feature and not a 
 INT is received
 + R0 is the input source (user's keyboard, or mouse in the future)
 + R1 is the address to begin writing to
-interrupt() looks at R2 and goes to the address in it
+interrupt() looks at R1 and goes to the address in it
 Interrupt() calls `std::getline(std::cin >> std::ws, X);` (X being a placeholder for now) to get the user input
-When the user finally presses enter, Interrupt() writes that input to the address given in R2
+When the user finally presses enter, Interrupt() writes that input to the address given in R1
 Interrupt sets R0 to the amount of bytes the user wrote.
 Interrupt() returns the control back to the program.
