@@ -20,17 +20,21 @@ class memory{
     // For now they will be boilerplate.
     // A blueprint if you will.
     void write(const uint8_t& start_addr, const std::vector<uint8_t>& data){
-      int stop_byte = data.size();
-      int current_byte = 0;
-      while (current_byte < stop_byte){
-        RAM.insert(RAM.begin() + start_addr + current_byte, data.begin(), data.end());
-        current_byte++;
+      for (size_t i = 0; i < data.size(); i++){
+        if (start_addr + i < RAM.size()){
+          RAM.at(start_addr + i) = data[i];
+        }
+        else{
+          throw std::runtime_error("RAM Writing Error: Location being written to is beyond 65,535.");
+        }
       }
     }
     
     std::vector<uint8_t> read(const uint8_t& start_addr, const uint8_t& stop_addr){
-
       std::vector<uint8_t> data;
+      for (size_t i = 0; i < stop_addr; i++){
+        data.push_back(RAM.at(start_addr + i));
+      }
       return data;
     }
 };
@@ -64,6 +68,7 @@ class CPU{
     int PC = 0;
 
   public:
+    /*
     void add(){}
     void sub(){}
     void mul(){}
@@ -79,6 +84,7 @@ class CPU{
     void sdl_graphics(){}
     void ens(){}
     void mov(){}
+    */
     void run(const bool& logging, const std::vector<uint8_t>& PRG){
       bool running = true;
       while (running && PC < (int)PRG.size()){
