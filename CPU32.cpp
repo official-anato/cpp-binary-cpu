@@ -16,7 +16,7 @@
 class memory{
   public:
     std::vector<uint8_t> RAM = std::vector<uint8_t>(65535, 0);
-    void write(const bool& logging, const uint8_t& start_addr, const std::vector<uint8_t>& data){
+    void write(const bool& logging, const uint32_t& start_addr, const std::vector<uint8_t>& data){
       for (size_t i = 0; i < data.size(); i++){
         if (start_addr + i < RAM.size()){
           RAM.at(start_addr + i) = data[i];
@@ -26,10 +26,24 @@ class memory{
         }
       }
     }
+
+    void write32(const bool& logging, const uint32_t start_addr, const uint32_t data){ // Writes 1 word to RAM
+      // Get the 4 bytes
+      uint8_t MSB = (data >> 24) & 0b11111111;
+      uint8_t mid_high_byte = (data >> 16) & 0b11111111;
+      uint8_t mid_low_byte = (data >> 8) & 0b11111111;
+      uint8_t LSB = (data) & 0b11111111;
+
+      // Put them in a vector
+      std::vector<uint8_t> word = {LSB, mid_low_byte, mid_high_byte, MSB};
+
+      // Call the function.
+      write(logging, start_addr, word);
+    }
     
-    std::vector<uint8_t> read(const bool& logging, const uint8_t& start_addr, const uint8_t& stop_addr){
+    std::vector<uint8_t> memory_read(const bool& logging, const uint32_t& start_addr, const uint32_t& stop_addr){
       std::vector<uint8_t> data;
-      for (size_t i = 0; i < stop_addr; i++){
+      for (size_t i = start_addr; i < stop_addr; i++){
         data.push_back(RAM.at(start_addr + i));
       }
       return data;
@@ -83,6 +97,7 @@ class CPU{
     */
     void run(const bool& logging, const std::vector<uint8_t>& PRG){
       bool running = true;
+      // For now, code will be hardcoded to test. Will add the FDE cycle later.
       while (running && PC < (int)PRG.size()){
       }
     }
