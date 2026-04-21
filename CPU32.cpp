@@ -16,10 +16,7 @@
 class memory{
   public:
     std::vector<uint8_t> RAM = std::vector<uint8_t>(65535, 0);
-    // These two functions will be written later.
-    // For now they will be boilerplate.
-    // A blueprint if you will.
-    void write(const uint8_t& start_addr, const std::vector<uint8_t>& data){
+    void write(const bool& logging, const uint8_t& start_addr, const std::vector<uint8_t>& data){
       for (size_t i = 0; i < data.size(); i++){
         if (start_addr + i < RAM.size()){
           RAM.at(start_addr + i) = data[i];
@@ -30,7 +27,7 @@ class memory{
       }
     }
     
-    std::vector<uint8_t> read(const uint8_t& start_addr, const uint8_t& stop_addr){
+    std::vector<uint8_t> read(const bool& logging, const uint8_t& start_addr, const uint8_t& stop_addr){
       std::vector<uint8_t> data;
       for (size_t i = 0; i < stop_addr; i++){
         data.push_back(RAM.at(start_addr + i));
@@ -42,23 +39,26 @@ class memory{
 class reg{
   public:
     std::vector<uint8_t> registers;
-    void write(const uint8_t* data){
+    void write(const bool& logging, const uint8_t* data){
     }
 
-    std::vector<uint8_t> read(const uint8_t& start_addr, const uint8_t& stop_addr){
+    std::vector<uint8_t> read(const bool& logging, const uint8_t& start_addr, const uint8_t& stop_addr){
       std::vector<uint8_t> data;
       return data;
     }
 };
 
-class SDL_GRAPHICS{}; // Currently empty class to be filled in later.
+class SDL_GRAPHICS{}; // Currently empty class; to be filled in later.
 
 class CPU{
   private:
-    void kernel_print(){} // addr, data, byte count
-    void kerne_userinput(){} // input src, writing address
-    void kerne_filewrite(){} // filename, data
-    void kerne_fileread(){} // filename, byte count
+    // These functions will be called by interrupt(), and NOTHING else.
+    void kernel_print(const bool& logging){} // addr, data, byte count
+    void kerne_userinput(const bool& logging){} // input src, writing address
+    void kerne_filewrite(const bool& logging){} // filename, data
+    void kerne_fileread(const bool& logging){} // filename, byte count
+
+    void ALUInternals_math(const bool& logging){}
 
     memory RAM;
     reg Register;
@@ -69,21 +69,17 @@ class CPU{
 
   public:
     /*
-    void add(){}
-    void sub(){}
-    void mul(){}
-    void div(){}
-    void mod(){}
-    void jmp(){}
-    void jeq(){}
-    void jlt(){}
-    void jgt(){}
-    void cmp(){}
-    void interrupt(){}
-    void halt(){}
-    void sdl_graphics(){}
-    void ens(){}
-    void mov(){}
+    void ALU(const bool& logging){}
+    void jmp(const bool& logging){}
+    void jeq(const bool& logging){}
+    void jlt(const bool& logging){}
+    void jgt(const bool& logging){}
+    void cmp(const bool& logging){}
+    void interrupt(const bool& logging){}
+    void halt(const bool& logging){}
+    void sdl_graphics(const bool& logging){}
+    void ens(const bool& logging){}
+    void mov(const bool& logging){}
     */
     void run(const bool& logging, const std::vector<uint8_t>& PRG){
       bool running = true;
