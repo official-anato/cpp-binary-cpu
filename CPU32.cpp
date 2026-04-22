@@ -6,6 +6,7 @@
 */
 
 #include <vector>
+#include <array>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -34,13 +35,14 @@ void log_complete(const bool& logging){
 
 class memory{
   public:
-    std::vector<uint8_t> RAM = std::vector<uint8_t>(65535, 0);
+    std::array<uint8_t, 65535> RAM;
     void write(const bool& logging, const uint32_t& start_addr, const std::vector<uint8_t>& data){
       for (size_t i = 0; i < data.size(); i++){
         if (start_addr + i < RAM.size()){
-          log(logging, "");
+          log(logging, "[RAM] : Writing data to " + std::to_string(start_addr + i));
           RAM.at(start_addr + i) = data[i];
-          log(logging, "");
+          log(logging, "[RAM] : Data = " + std::to_string(data[i]));
+          log(logging, "[RAM] : Written data successfully!");
         }
         else{
           log(logging, "[RAM] : Violation detected, cannot writen to that address!");
@@ -51,33 +53,33 @@ class memory{
 
     void write32(const bool& logging, const uint32_t start_addr, const uint32_t data){ // Writes 1 word to RAM
       // Get the 4 bytes
-      log(logging, "[RAM] : Writing MSB.");
-      uint8_t MSB = (data >> 24) & 0b11111111;
-      log(logging, "[RAM] : Written MSB successfully!");
-      log(logging, "[RAM] : Value = " + (int)MSB);
-
-      log(logging, "[RAM] : Writing mid MSB.");
-      uint8_t mid_high_byte = (data >> 16) & 0b11111111;
-      log(logging, "[RAM] : Written mid MSB successfully!");
-      log(logging, "[RAM] : Value = " + (int)mid_high_byte);
+      log(logging, "[RAM] : Writing LSB.");
+      uint8_t LSB = (data) & 0xFF;
+      log(logging, "[RAM] : Written LSB successfully!");
+      log(logging, "[RAM] : Value = " + std::to_string(LSB));
 
       log(logging, "[RAM] : Writing mid LSB.");
-      uint8_t mid_low_byte = (data >> 8) & 0b11111111;
+      uint8_t mid_low_byte = (data >> 8) & 0xFF;
       log(logging, "[RAM] : Written mid LSB successfully!");
-      log(logging, "[RAM] : Value = " + (int)mid_low_byte);
+      log(logging, "[RAM] : Value = " + std::to_string(mid_low_byte));
 
-      log(logging, "[RAM] : Writing LSB.");
-      uint8_t LSB = (data) & 0b11111111;
-      log(logging, "[RAM] : Written LSB successfully!");
-      log(logging, "[RAM] : Value = " + (int)LSB);
+      log(logging, "[RAM] : Writing mid MSB.");
+      uint8_t mid_high_byte = (data >> 16) & 0xFF;
+      log(logging, "[RAM] : Written mid MSB successfully!");
+      log(logging, "[RAM] : Value = " + std::to_string(mid_high_byte));
+      
+      log(logging, "[RAM] : Writing MSB.");
+      uint8_t MSB = (data >> 24) & 0xFF;
+      log(logging, "[RAM] : Written MSB successfully!");
+      log(logging, "[RAM] : Value = " + std::to_string(MSB));
 
       // Put them in a vector
       std::vector<uint8_t> word = {LSB, mid_low_byte, mid_high_byte, MSB};
 
       // Call the function.
-      log(logging, "");
+      log(logging, "[RAM] : Writing 4 byte word to RAM...");
       write(logging, start_addr, word);
-      log(logging, "");
+      log(logging, "[RAM] : Writing finished.");
     }
     
     std::vector<uint8_t> memory_read(const bool& logging, const uint32_t& start_addr, const uint32_t& stop_addr){
@@ -85,7 +87,7 @@ class memory{
       log(logging, "[RAM] : Retrieving all bytes...");
       for (size_t i = 0; i < stop_addr; i++){
         data.push_back(RAM.at(start_addr + i));
-        log(logging, "[RAM] : Retrieved " + (int)RAM.at(start_addr + i));
+        log(logging, "[RAM] : Retrieved " + std::to_string(RAM.at(start_addr + i)));
       }
       log(logging, "[RAM] : Retrieved successfully!");
       return data;
@@ -96,11 +98,23 @@ class memory{
       log(logging, "[RAM] : Retrieving data");
       std::vector<uint8_t> data8 = memory_read(logging, start_addr*4, stop_addr*4);
 
-      for(size_t i = 0; i < data8.size(); i++){
+      for(size_t i = 0; i < data8.size(); i += 4){
+        log(logging, "[RAM] : Retrieving LSB...");
         uint8_t LSB = data8[0 + i];
+        log(logging, "[RAM] : Retrieved LSB successfully!: \n[RAM] : Value = " + std::to_string(LSB));
+
+        log(logging, "[RAM] : Retrieving mid LSB...");
         uint8_t mid_LSB = data8[1 + i];
+        log(logging, "[RAM] : Retrieved mid LSB successfully!: \n[RAM] : Value = " + std::to_string(mid_LSB));
+
+        log(logging, "[RAM] : Retrieving mid MSB...");
         uint8_t mid_MSB = data8[2 + i];
+        log(logging, "[RAM] : Retrieved mid MSB successfully!: \n[RAM] : Value = " + std::to_string(mid_MSB));
+
+        log(logging, "[RAM] : Retrieving MSB...");
         uint8_t MSB = data8[3 + i];
+        log(logging, "[RAM] : Retrieved MSB successfully!: \n[RAM] : Value = " + std::to_string(MSB));
+
         uint32_t chunk32 = (LSB) | (mid_LSB << 8) | (mid_MSB << 16) | (MSB << 24);
         data.push_back(chunk32);
       }
@@ -111,7 +125,8 @@ class memory{
 
 class reg{
   public:
-    std::vector<uint8_t> registers;
+    std::array<uint32_t, 32> registers{};
+    // Arrays can be changed using `.at()` like vectors.
     void write(const bool& logging, const uint8_t& data){
     }
 
@@ -208,16 +223,20 @@ class CPU{
       bool running = true;
       log(logging, "[OS] : ANA32 successfully booted! Awaiting instructions...");
       // For now, code will be hardcoded to test. Will add the FDE cycle later.
+      RAM.write32(logging, 0, 1);
+      std::cout << RAM.memory_read32(logging, 0, 1)[0];
       log_complete(logging);
+      /*
       while (running && PC < (int)PRG.size()){
       }
+      */
     }
 };
 
 int main(){
   // Delete previous contents of vm-log.txt on boot.
-  // std::fstream file("vm-log.txt", std::fstream::out);
-  // file << "";
+  std::fstream file("vm-log.txt", std::fstream::out);
+  file << "";
 
   CPU computer;
   bool logging = true;
