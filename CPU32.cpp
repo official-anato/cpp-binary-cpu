@@ -43,7 +43,7 @@ class memory{
           log(logging, "");
         }
         else{
-          log(logging, "");
+          log(logging, "[RAM] : Violation detected, cannot writen to that address!");
           throw std::runtime_error("RAM Writing Error: Location being written to is beyond 65,535.");
         }
       }
@@ -85,7 +85,7 @@ class memory{
       log(logging, "[RAM] : Retrieving all bytes...");
       for (size_t i = 0; i < stop_addr; i++){
         data.push_back(RAM.at(start_addr + i));
-        log(logging, "[RAM] : Retrieved " + RAM.at(start_addr + i));
+        log(logging, "[RAM] : Retrieved " + (int)RAM.at(start_addr + i));
       }
       log(logging, "[RAM] : Retrieved successfully!");
       return data;
@@ -95,11 +95,6 @@ class memory{
       std::vector<uint32_t> data;
       log(logging, "[RAM] : Retrieving data");
       std::vector<uint8_t> data8 = memory_read(logging, start_addr*4, stop_addr*4);
-      // in data8, take 4 byte chunks and
-      // transmute them into a uint32,
-      // then push_back() to data.
-      // Note that this should ALWAYS use the format
-      // LSB-mid_LSB-mid_MSB-MSB
 
       for(size_t i = 0; i < data8.size(); i++){
         uint8_t LSB = data8[0 + i];
@@ -117,7 +112,7 @@ class memory{
 class reg{
   public:
     std::vector<uint8_t> registers;
-    void write(const bool& logging, const uint8_t* data){
+    void write(const bool& logging, const uint8_t& data){
     }
 
     std::vector<uint8_t> read(const bool& logging, const uint8_t& start_addr, const uint8_t& stop_addr){
@@ -213,13 +208,9 @@ class CPU{
       bool running = true;
       log(logging, "[OS] : ANA32 successfully booted! Awaiting instructions...");
       // For now, code will be hardcoded to test. Will add the FDE cycle later.
-      RAM.write32(logging, 0, 1);
-      std::cout << RAM.memory_read32(logging, 0, 1)[0];
       log_complete(logging);
-      /*
       while (running && PC < (int)PRG.size()){
       }
-      */
     }
 };
 
