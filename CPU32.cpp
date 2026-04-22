@@ -143,6 +143,13 @@ class SDL_GRAPHICS{}; // Currently empty class; to be filled in later.
 
 class CPU{
   private:
+    memory RAM;
+    reg Register;
+    bool Zero = false;
+    bool Carry = false;
+    bool Sign = false;
+    int PC = 0;
+
     // These functions will be called by interrupt(), and NOTHING else.
     // For now they will do nothing, but they will be written later.
     void kernel_print(const bool& logging){ // addr, data, byte count
@@ -170,13 +177,6 @@ class CPU{
       else if ((int)res > 0){Zero = false; Carry = (res > INT_MAX) ? true : false; Sign = false;}
       else if ((int)res == 0){Zero = true; Carry = false; Sign = false;}
     }
-    
-    memory RAM;
-    reg Register;
-    bool Zero = false;
-    bool Carry = false;
-    bool Sign = false;
-    int PC = 0;
   public:
     void ALU(const bool& logging){
       log_complete(logging);
@@ -202,7 +202,24 @@ class CPU{
       log_complete(logging);
     }
 
-    void interrupt(const bool& logging){}
+    void interrupt(const bool& logging, const uint32_t& MD, const uint32_t intcode){
+      //
+      switch (intcode & 0xff){
+
+        case 0b0:{ // Print
+          uint8_t message_location; // Register 0
+          uint8_t length; // Register 1
+          uint8_t mode; // Register 2
+          kernel_print(logging);
+          break;
+        }
+
+        default:{
+          throw std::invalid_argument("Invalid Interrupt: This interrupt does not exist.");
+          break;
+        }
+      }
+    }
 
     void halt(const bool& logging){
       log_complete(logging);
@@ -223,8 +240,11 @@ class CPU{
       bool running = true;
       log(logging, "[OS] : ANA32 successfully booted! Awaiting instructions...");
       // For now, code will be hardcoded to test. Will add the FDE cycle later.
+      // Uncomment if you need to test the functionality.
+      /*
       RAM.write32(logging, 0, 1);
       std::cout << RAM.memory_read32(logging, 0, 1)[0];
+      */
       log_complete(logging);
       /*
       while (running && PC < (int)PRG.size()){
