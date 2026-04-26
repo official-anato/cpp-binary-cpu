@@ -14,6 +14,8 @@
 #include <map>
 #include <functional>
 #include <climits>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 // This function will be called everytime a log must be written.
 std::vector<std::string> log_data;
@@ -33,13 +35,21 @@ void log_complete(const bool& logging){
   }
 };
 
+void log_clear(const bool& logging){
+  if ((!fs::exists("vm-log.txt")) && logging){
+    std::fstream file("vm-log.txt", std::fstream::out);
+    file << "";
+  }
+};
+
+
 class memory{
   public:
     std::array<uint8_t, 65535> RAM;
     void write(const bool& logging, const uint32_t& start_addr, const std::vector<uint8_t>& data){
       for (size_t i = 0; i < data.size(); i++){
         if (start_addr + i < RAM.size()){
-          log(logging, "[RAM] : Writing data to " + std::to_string(start_addr + i));
+          log(logging, "[RAM] : Writing to RAM address " + std::to_string(start_addr + i));
           RAM.at(start_addr + i) = data[i];
           log(logging, "[RAM] : Data = " + std::to_string(data[i]));
           log(logging, "[RAM] : Written data successfully!");
@@ -130,12 +140,12 @@ class reg{
     std::array<uint32_t, 32> registers{};
     // Arrays can be changed using `.at()` like vectors.
     void write(const bool& logging, const uint8_t addr, const std::vector<uint8_t>& data){
-      log(logging, "[REG] : Start");
-      if (addr < registers.size()){
+      log(logging, "[REG] : Writing to register address " + std::to_string(addr));
+      if (addr < registers.size() && data.size() == 4){
         registers.at(addr) = (data[0]) << 24|(data[1]) << 16|(data[2]) << 8|(data[3]);
         log(logging, "[REG] : data = " + std::to_string(registers.at(addr)));
       };
-      log(logging, "[REG] : End");
+      log(logging, "[REG] : Finished writing!");
     }
 
     std::vector<uint32_t> read(const bool& logging, const uint8_t& addr){
@@ -249,31 +259,25 @@ class CPU{
     }
     void run(const bool& logging, const std::vector<uint8_t>& PRG){
       bool running = true;
-      log(logging, "[OS] : ANA32 successfully booted! Awaiting instructions...");
       // For now, code will be hardcoded to test. Will add the FDE cycle later.
-      // Uncomment if you need to test the functionality.
+      //while ((running) && (PC < (int)PRG.size())){
+      log(logging, "[OS] : ANA32 successfully booted! Awaiting instructions...");
       Register.write(logging, 0, {0b00000000, 0b00000000, 0b00000000, 0b01000001});
       std::cout << Register.read(logging, 0)[0];
       log_complete(logging);
-      /*
-      while (running && PC < (int)PRG.size()){
-      }
-      */
+      //}
     }
 };
 
 int main(){
-  // Delete previous contents of vm-log.txt on boot.
-  std::fstream file("vm-log.txt", std::fstream::out);
-  file << "";
 
   CPU computer;
   bool logging = true;
+  log_clear(logging);
   log(logging, "[BIOS] : Initializing instructions...");
   std::vector<uint8_t> PRG = {
-  }; 
+  };
   log(logging, "[BIOS] : Initialization successful!");
-  
   log(logging, "[BIOS] : Sending instructions...");
   computer.run(logging, PRG);
   return 0;
