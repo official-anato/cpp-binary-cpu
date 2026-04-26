@@ -129,21 +129,23 @@ class reg{
   public:
     std::array<uint32_t, 32> registers{};
     // Arrays can be changed using `.at()` like vectors.
-    void write(const bool& logging, const uint8_t start_addr, const std::vector<uint8_t>& data){
-      log(logging, "");
-      if (start_addr > registers.size()){
-        registers.at(start_addr) = (data[0]) << 24|(data[1]) << 16|(data[2]) << 8|(data[3]);
+    void write(const bool& logging, const uint8_t addr, const std::vector<uint8_t>& data){
+      log(logging, "[REG] : Start");
+      if (addr < registers.size()){
+        registers.at(addr) = (data[0]) << 24|(data[1]) << 16|(data[2]) << 8|(data[3]);
+        log(logging, "[REG] : data = " + std::to_string(registers.at(addr)));
       };
-      log(logging, "");
+      log(logging, "[REG] : End");
     }
 
-    std::vector<uint8_t> read(const bool& logging, const uint8_t& start_addr, const uint8_t& stop_addr){
-      std::vector<uint8_t> data;
-      log(logging, "");
-      if (start_addr > registers.size()){
-        //return registers.at(start_addr);
-      };
-      log(logging, "");
+    std::vector<uint32_t> read(const bool& logging, const uint8_t& addr){
+      std::vector<uint32_t> data;
+      log(logging, "[REG] : Retrieving all bytes...");
+      if (addr < registers.size()){
+        data.push_back(registers.at(addr));
+        log(logging, "[REG] : Retrieved " + std::to_string(registers.at(addr)));
+        log(logging, "[REG] : Retrieved successfully!");
+      }
       return data;
     }
 };
@@ -250,10 +252,8 @@ class CPU{
       log(logging, "[OS] : ANA32 successfully booted! Awaiting instructions...");
       // For now, code will be hardcoded to test. Will add the FDE cycle later.
       // Uncomment if you need to test the functionality.
-      /*
-      RAM.write32(logging, 0, 1);
-      std::cout << RAM.memory_read32(logging, 0, 1)[0];
-      */
+      Register.write(logging, 0, {0b00000000, 0b00000000, 0b00000000, 0b01000001});
+      std::cout << Register.read(logging, 0)[0];
       log_complete(logging);
       /*
       while (running && PC < (int)PRG.size()){
