@@ -1,6 +1,7 @@
 # --- #
 This file is where commit notes will be written for when the github repo is updated.
 The copy of this file on github will be blank, as this is intended to be a temporary file.
+DO NOT UPDATE THIS FILE.
 # --- #
 
 Changelog:
