@@ -85,12 +85,14 @@ class memory{
     std::vector<uint8_t> memory_read(const bool& logging, const uint32_t& start_addr, const uint32_t& stop_addr){
       std::vector<uint8_t> data;
       log(logging, "[RAM] : Retrieving all bytes...");
-      for (size_t i = 0; i < stop_addr; i++){
-        data.push_back(RAM.at(start_addr + i));
-        log(logging, "[RAM] : Retrieved " + std::to_string(RAM.at(start_addr + i)));
-      }
-      log(logging, "[RAM] : Retrieved successfully!");
-      return data;
+      if (start_addr > RAM.size()){
+        for (size_t i = 0; i < stop_addr; i++){
+          data.push_back(RAM.at(start_addr + i));
+          log(logging, "[RAM] : Retrieved " + std::to_string(RAM.at(start_addr + i)));
+        }
+        log(logging, "[RAM] : Retrieved successfully!");
+        return data;
+      };
     }
 
     std::vector<uint32_t> memory_read32(const bool& logging, const uint32_t& start_addr, const uint32_t& stop_addr){
@@ -127,13 +129,20 @@ class reg{
   public:
     std::array<uint32_t, 32> registers{};
     // Arrays can be changed using `.at()` like vectors.
-    void write(const bool& logging, const uint8_t& data){
+    void write(const bool& logging, const uint8_t start_addr, const std::vector<uint8_t>& data){
+      log(logging, "");
+      if (start_addr > registers.size()){
+        registers.at(start_addr) = (data[0]) << 24|(data[1]) << 16|(data[2]) << 8|(data[3]);
+      };
+      log(logging, "");
     }
 
     std::vector<uint8_t> read(const bool& logging, const uint8_t& start_addr, const uint8_t& stop_addr){
       std::vector<uint8_t> data;
       log(logging, "");
-      // Code here
+      if (start_addr > registers.size()){
+        //return registers.at(start_addr);
+      };
       log(logging, "");
       return data;
     }
