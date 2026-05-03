@@ -36,7 +36,7 @@ void log_complete(const bool& logging){
 };
 
 void log_clear(const bool& logging){
-  if ((!fs::exists("vm-log.txt")) && logging){
+  if (fs::exists("vm-log.txt") && logging){
     std::fstream file("vm-log.txt", std::fstream::out);
     file << "";
   }
@@ -160,7 +160,7 @@ class reg{
     }
 };
 
-class SDL_GRAPHICS{}; // Currently empty class; to be filled in later.
+class SDL_GRAPHICS{}; // Currently empty class; to be filled in the future.
 
 class CPU{
   private:
@@ -173,19 +173,20 @@ class CPU{
 
     // These functions will be called by interrupt(), and NOTHING else.
     // For now they will do nothing, but they will be written later.
-    void kernel_print(const bool& logging){ // addr, data, byte count
+    void kernel_print(const bool logging, uint8_t msg_loc, uint8_t len, uint8_t mode){ // addr, data, byte count
+      std::cout << RAM.memory_read32(logging, msg_loc, msg_loc + 4)[0];
       log(logging, "");
     }
 
-    void kerne_userinput(const bool& logging){ // input src, writing address
+    void kernel_userinput(const bool& logging){ // input src, writing address
       log(logging, "");
     } 
 
-    void kerne_filewrite(const bool& logging){ // filename, data
+    void kernel_filewrite(const bool& logging){ // filename, data
       log(logging, "");
     } 
 
-    void kerne_fileread(const bool& logging){ // filename, byte count
+    void kernel_fileread(const bool& logging){ // filename, byte count
       log(logging, "");
     } 
 
@@ -228,10 +229,18 @@ class CPU{
       switch (intcode & 0xff){
 
         case 0b0:{ // Print
-          uint8_t message_location; // Register 0
-          uint8_t length; // Register 1
-          uint8_t mode; // Register 2
-          kernel_print(logging);
+          // Currently, these functions read directly from the registers, but in the future they will use
+          // Register.read()
+          /*
+          uint8_t message_location = Register.registers[0]; // Register 0
+          uint8_t length = Register.registers[1]; // Register 1
+          uint8_t mode = Register.registers[2]; // Register 2
+          */
+
+          uint32_t message_location = Register.read(logging, 0b00)[0]; // Register 0
+          uint32_t length = Register.read(logging, 0b01)[0]; // Register 1
+          uint32_t mode = Register.read(logging, 0b10)[0]; // Register 2
+          kernel_print(logging, message_location, length, mode);
           break;
         }
 
@@ -260,12 +269,16 @@ class CPU{
     void run(const bool& logging, const std::vector<uint8_t>& PRG){
       bool running = true;
       // For now, code will be hardcoded to test. Will add the FDE cycle later.
-      //while ((running) && (PC < (int)PRG.size())){
-      log(logging, "[OS] : ANA32 successfully booted! Awaiting instructions...");
-      Register.write(logging, 0, {0b00000000, 0b00000000, 0b00000000, 0b01000001});
-      std::cout << Register.read(logging, 0)[0];
-      log_complete(logging);
-      //}
+      while ((running) && (PC < (int)PRG.size())){
+        log(logging, "[OS] : ANA32 successfully booted! Awaiting instructions...");
+        RAM.write32(logging, 0b0, 0b01000001); // read this value
+        Register.write(logging, 0, {0b0, 0b0, 0b0, 0b0}); // loc
+        Register.write(logging, 1, {0b0, 0b0, 0b0, 0b100}); // len
+        Register.write(logging, 2, {0b0, 0b0, 0b0, 0b0}); // mode
+        interrupt(logging, 0b0, 0b0);
+        log_complete(logging);
+        running = false;
+      }
     }
 };
 
@@ -276,6 +289,7 @@ int main(){
   log_clear(logging);
   log(logging, "[BIOS] : Initializing instructions...");
   std::vector<uint8_t> PRG = {
+    0b0
   };
   log(logging, "[BIOS] : Initialization successful!");
   log(logging, "[BIOS] : Sending instructions...");
