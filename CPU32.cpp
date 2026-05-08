@@ -5,6 +5,13 @@
 >> Written by Anato.
 */
 
+// NOTE TO SELF: Please rewrite this garbage to be better. Your code has become spaghetti,
+// and not the edible kind.
+// In one word: REFACTOR.
+// When you refactor, maybe actually have a plan? You fucking dimwit?
+// I can't believe I'm scolding past me and future me at the same time at midnight (as of writing),
+// but it's the truth.
+
 #include <vector>
 #include <array>
 #include <iostream>
