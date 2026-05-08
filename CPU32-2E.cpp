@@ -15,8 +15,6 @@
 #include <fstream>
 #include <string>
 #include <cstdint>
-#include <map>
-#include <functional>
 #include <climits>
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -24,6 +22,7 @@ namespace fs = std::filesystem;
 class RAM_Hardware {
   private:
     std::vector<uint8_t> RAM;
+
   public:
     RAM_Hardware(size_t size_bytes) : RAM(size_bytes, 0) {}
     size_t getSize() const {
@@ -36,10 +35,14 @@ class RAM_Hardware {
       }
     }
 
-    uint8_t read(const bool& logging, const size_t& address, uint8_t& value){
+    uint8_t read(const bool& logging, const size_t& address){
       if (address < RAM.size()){
-        value = RAM[address];
+        uint8_t value = RAM[address];
         return value;
+      }
+
+      else{
+        throw std::runtime_error("Error: Attempted to read from an invalid RAM address.");
       }
     }
 };
@@ -95,7 +98,7 @@ int main(){
   CPU computer;
   bool logging = true;
   std::vector<uint8_t> PRG = {
-    0b0
+    0b1
   };
   computer.run(logging, PRG);
   return 0;
