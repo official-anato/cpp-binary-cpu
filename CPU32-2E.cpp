@@ -85,6 +85,34 @@ class CPU{
     }
 
   public:
+    void ALU(const bool& logging){}
+    void jmp(const bool& logging){}
+    void jeq(const bool& logging){}
+    void jlt(const bool& logging){}
+    void jgt(const bool& logging){}
+    void cmp(const bool& logging){}
+    void interrupt(const bool& logging, const uint32_t& MD, const uint32_t intcode){
+      switch (intcode & 0xff){
+
+        case 0b0:{ // Print
+          uint32_t message_location; // Register 0
+          uint32_t length; // Register 1
+          uint32_t mode; // Register 2
+          kernel_print(logging, message_location, length, mode);
+          break;
+        }
+
+        default:{
+          throw std::invalid_argument("Invalid Interrupt: This interrupt does not exist.");
+          break;
+        }
+      }
+    }
+    void halt(const bool& logging){}
+    void sdl_graphics(const bool& logging){}
+    void ens(const bool& logging){}
+    void mov(const bool& logging){}
+
     void run(const bool& logging, const std::vector<uint8_t>& PRG){
       load_data_to_RAM(logging, PRG);
       bool running = true;
