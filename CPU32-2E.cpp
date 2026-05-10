@@ -176,6 +176,7 @@ class CPU{
       if (!sdl_running){
         Graphics.init_sys();
         sdl_running = true;
+        sdl_system(logging, intcode); // Re-run the function to execute the command after initializing SDL.
       }
 
       else{
