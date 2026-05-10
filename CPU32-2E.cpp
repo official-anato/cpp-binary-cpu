@@ -1,7 +1,7 @@
 /*
 >> CURRENTLY WIP PROJECT : Expect bugs.
 >> Anato's Virtual Machine in 32 bits!
->> Dubbed ANA32
+>> Dubbed "ANA32"
 >> Written by Anato.
 
 >> This is the 2nd edition of ANA32. The goal for this edition is to
@@ -140,6 +140,28 @@ class CPU{
           uint32_t length; // Register 1
           uint32_t mode; // Register 2
           kernel_print(logging, message_location, length, mode);
+          break;
+        }
+
+        case 0b1: { // User Input
+          uint32_t userinput; // Input source - R0
+          uint32_t address; // Writing address - R1
+          break;
+        }
+
+        case 010: { // File Write
+          uint32_t filename_address; // Filename address - R0
+          uint32_t filename_length; // Filename length - R1
+          uint32_t data_address; // Data address - R2
+          uint32_t data_length; // Data length - R3
+          break;
+        }
+
+        case 0b11: { // File Read
+          uint32_t filename_address; // Filename address - R0
+          uint32_t filename_length; // Filename length - R1
+          uint32_t data_address; // Data address - R2
+          uint32_t data_length; // Data length - R3
           break;
         }
 
