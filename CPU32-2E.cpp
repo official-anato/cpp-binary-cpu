@@ -50,11 +50,15 @@ class RAM_Hardware {
 class Registers_Hardware{};
 
 class SDL_GRAPHICS{
-  RAM_Hardware VRAM = RAM_Hardware(720 * 720); // Draw_image() interprets each byte here and translates them to a pixel on a screen.
-  // Screen resolution is 720x720.
-  void write_to_VRAM(){}
-  void read_from_VRAM(){}
-  void draw_image(){}
+  private:
+    RAM_Hardware VRAM = RAM_Hardware(720 * 720); // Draw_image() interprets each byte here and translates them to a pixel on a screen.
+  
+  public:
+    // Screen resolution is 720x720.
+    void init_sys(){}
+    void write_to_VRAM(){}
+    void read_from_VRAM(){}
+    void draw_image(){}
 }; // Currently empty class; to be filled in the future.
 
 class CPU{
@@ -62,9 +66,46 @@ class CPU{
     bool Zero = false;
     bool Carry = false;
     bool Sign = false;
+    bool sdl_running = false;
     int PC = 0;
     RAM_Hardware RAM = RAM_Hardware(65535);
     Registers_Hardware Registers;
+    SDL_GRAPHICS Graphics;
+
+    // --- Helpers --- //
+    uint8_t _fetch8(const bool logging){
+      uint8_t val = RAM.read(logging, PC);
+      PC++;
+      return val;
+    }
+
+    uint16_t _fetch16(const bool logging){
+      uint8_t val1 = _fetch8(logging);
+      uint8_t val2 = _fetch8(logging);
+      PC += 2;
+      return (val1 << 8) | val2;
+    }
+
+    size_t _fetch24(const bool logging){
+      uint8_t val1 = _fetch8(logging);
+      uint8_t val2 = _fetch8(logging);
+      uint8_t val3 = _fetch8(logging);
+      PC += 3;
+      return (val1 << 16) | (val2 << 8) | val3;
+    }
+
+    uint32_t _fetch32(const bool logging){
+      uint8_t val1 = _fetch8(logging);
+      uint8_t val2 = _fetch8(logging);
+      uint8_t val3 = _fetch8(logging);
+      uint8_t val4 = _fetch8(logging);
+      PC += 4;
+      return (val1 << 24) | (val2 << 16) | (val3 << 8) | val4;
+    }
+
+    void _0b11exception(std::string func_name){}
+
+    // Internal functions //
     void load_data_to_RAM(const bool logging, const std::vector<uint8_t>& data){
       for (size_t i = 0; i < data.size(); i++){
         if (i < RAM.getSize()){
@@ -109,7 +150,37 @@ class CPU{
       }
     }
     void halt(const bool logging){}
-    void sdl_graphics(const bool logging){}
+    void sdl_system(const bool logging, const uint32_t intcode){
+      if (!sdl_running){
+        Graphics.init_sys();
+        sdl_running = true;
+      }
+
+      else{
+        switch (intcode & 0xff){
+          case 0b0:{ // Write to VRAM
+            break;
+          }
+          
+          case 0b01:{ // Read from VRAM
+            break;
+          }
+
+          case 0b10:{ // Draw image
+            break;
+          }
+
+          case 0b11:{ // Quit SDL
+            break;
+          }
+
+          default:{
+            throw std::invalid_argument("Invalid Interrupt: This interrupt does not exist.");
+            break;
+          }
+      }
+      }
+    }
     void ens(const bool logging){}
     void mov(const bool logging){}
 
@@ -117,7 +188,7 @@ class CPU{
       load_data_to_RAM(logging, PRG);
       bool running = true;
       while ((running) && (PC < (int)RAM.getSize())){
-        uint32_t opcode = PRG.at(PC);
+        uint8_t opcode = RAM.read(logging, PC);
         PC++;
         switch(opcode){
           case 0b0:
@@ -194,7 +265,7 @@ class CPU{
           
           case 0b1011:{
             //log(logging, "SDL", {});
-            //sdl();
+            //sdl_system(logging, intcode); // This command will function like interrupt(), but will communicate with SDL instead.
             break;
           }
           
