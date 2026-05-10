@@ -149,7 +149,7 @@ class CPU{
           break;
         }
 
-        case 010: { // File Write
+        case 0b10: { // File Write
           uint32_t filename_address; // Filename address - R0
           uint32_t filename_length; // Filename length - R1
           uint32_t data_address; // Data address - R2
