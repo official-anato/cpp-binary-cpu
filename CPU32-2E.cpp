@@ -47,7 +47,33 @@ class RAM_Hardware {
     }
 };
 
-class Registers_Hardware{};
+class Registers_Hardware{
+  private:
+    std::vector<uint8_t> Registers;
+
+  public:
+    Registers_Hardware() : Registers(32, 0) {}
+    size_t getSize() const {
+      return Registers.size();
+    }
+
+    void write(const bool logging, const size_t& address, const uint8_t& value){
+      if (address < Registers.size()){
+        Registers[address] = value;
+      }
+    }
+
+    uint8_t read(const bool logging, const size_t& address){
+      if (address < Registers.size()){
+        uint8_t value = Registers[address];
+        return value;
+      }
+
+      else{
+        throw std::runtime_error("Error: Attempted to read from an invalid Register address.");
+      }
+    }
+};
 
 class SDL_GRAPHICS{
   private:
@@ -136,32 +162,32 @@ class CPU{
       switch (intcode & 0xff){
 
         case 0b0:{ // Print
-          uint32_t message_location; // Register 0
-          uint32_t length; // Register 1
-          uint32_t mode; // Register 2
+          uint32_t message_location = Registers.read(logging, 0); // Register 0
+          uint32_t length = Registers.read(logging, 1); // Register 1
+          uint32_t mode = Registers.read(logging, 2); // Register 2
           kernel_print(logging, message_location, length, mode);
           break;
         }
 
         case 0b1: { // User Input
-          uint32_t userinput; // Input source - R0
-          uint32_t address; // Writing address - R1
+          uint32_t userinput = Registers.read(logging, 0); // Input source - R0
+          uint32_t address = Registers.read(logging, 1); // Writing address - R1
           break;
         }
 
         case 0b10: { // File Write
-          uint32_t filename_address; // Filename address - R0
-          uint32_t filename_length; // Filename length - R1
-          uint32_t data_address; // Data address - R2
-          uint32_t data_length; // Data length - R3
+          uint32_t filename_address = Registers.read(logging, 0); // Filename address - R0
+          uint32_t filename_length = Registers.read(logging, 1); // Filename length - R1
+          uint32_t data_address = Registers.read(logging, 2); // Data address - R2
+          uint32_t data_length = Registers.read(logging, 3); // Data length - R3
           break;
         }
 
         case 0b11: { // File Read
-          uint32_t filename_address; // Filename address - R0
-          uint32_t filename_length; // Filename length - R1
-          uint32_t data_address; // Data address - R2
-          uint32_t data_length; // Data length - R3
+          uint32_t filename_address = Registers.read(logging, 0); // Filename address - R0
+          uint32_t filename_length = Registers.read(logging, 1); // Filename length - R1
+          uint32_t data_address = Registers.read(logging, 2); // Data address - R2
+          uint32_t data_length = Registers.read(logging, 3); // Data length - R3
           break;
         }
 
@@ -198,7 +224,7 @@ class CPU{
           }
 
           default:{
-            throw std::invalid_argument("Invalid Interrupt: This interrupt does not exist.");
+            throw std::invalid_argument("Invalid SDL Code: This code does not exist.");
             break;
           }
       }
@@ -214,11 +240,12 @@ class CPU{
         uint8_t opcode = RAM.read(logging, PC);
         PC++;
         switch(opcode){
-          case 0b0:
+          case 0b0:{
             //log(logging, "HLT", {});
             //halt();
             running = false;
             break;
+          }
             
           case 0b1: { // Add
             //log(logging, "ADD", {std::to_string(MD), std::to_string(A), std::to_string(B), std::to_string(R)});
@@ -324,7 +351,7 @@ int main(){
   CPU computer;
   bool logging = true;
   std::vector<uint8_t> PRG = {
-    0b1
+    0b0
   };
   computer.run(logging, PRG);
   return 0;
