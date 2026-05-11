@@ -302,7 +302,7 @@ class CPU{
       save_output = true;
     }
 
-    void mov(const bool logging){}
+    void mov(const bool logging, const uint8_t MD, const uint32_t A, const uint32_t B){}
 
     void run(const bool logging, const std::vector<uint8_t>& PRG){
       internal_logging = logging;
@@ -414,7 +414,10 @@ class CPU{
           
           case 0b1101:{
             //log(logging, "MOV", {std::to_string(MD), std::to_string(A), std::to_string(B)});
-            //mov(logging, MD, A, B);
+            uint8_t MD = _fetch8(logging);
+            uint32_t A = _fetch32(logging);
+            uint32_t B = _fetch32(logging);
+            mov(logging, MD, A, B);
             break;
           }
 
