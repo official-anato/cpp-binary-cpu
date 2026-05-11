@@ -25,6 +25,11 @@ class RAM_Hardware {
 
   public:
     RAM_Hardware(size_t size_bytes) : RAM(size_bytes, 0) {}
+
+    std::vector<uint8_t> getRAM() const {
+      return RAM;
+    }
+
     size_t getSize() const {
       return RAM.size();
     }
@@ -53,6 +58,11 @@ class Registers_Hardware{
 
   public:
     Registers_Hardware() : Registers(32, 0) {}
+
+    std::vector<uint8_t> getRegisters() const {
+      return Registers;
+    }
+
     size_t getSize() const {
       return Registers.size();
     }
@@ -94,6 +104,8 @@ class CPU{
     bool Sign = false;
     bool sdl_running = false;
     int PC = 0;
+    bool save_output = false;
+    std::string save_filename = "save.txt";
     RAM_Hardware RAM = RAM_Hardware(65535);
     Registers_Hardware Registers;
     SDL_GRAPHICS Graphics;
@@ -197,7 +209,34 @@ class CPU{
         }
       }
     }
-    void halt(const bool logging){}
+    void halt(const bool logging){
+      if (save_output){
+        // Declare file
+        std::fstream file(save_filename, std::ios::app);
+        
+        if (file.is_open()){
+          // Formatting for the file output
+          file  << "RAM (0 - 65535): [";
+          
+          // Iterate through items in RAM and append them one by one.
+          for (const auto& str : RAM.getRAM()){file << str << ", ";}
+          file << "]\nPC: " << PC << "\nRegisters (R0 - R31): [";
+          
+          // Do the same for registers as well
+          for (const auto& str : Registers.getRegisters()){file << str << ", ";}
+          file << "]";
+          file.close();
+        }
+        
+        std::cout << "Program has finished. Saving data to " << save_filename << std::endl;
+        std::exit(EXIT_SUCCESS);
+        }
+        
+        else{
+          // std::cout << "Program has finished." << std::endl; // Debug code. Enable only if you suspect your code shouldn't be stopping to see why.
+          std::exit(EXIT_SUCCESS);
+        }
+    }
     void sdl_system(const bool logging, const uint32_t intcode){
       if (!sdl_running){
         Graphics.init_sys();
@@ -230,19 +269,22 @@ class CPU{
       }
       }
     }
-    void ens(const bool logging){}
+    void ens(const bool logging){
+      save_output = true;
+    }
+
     void mov(const bool logging){}
 
     void run(const bool logging, const std::vector<uint8_t>& PRG){
       load_data_to_RAM(logging, PRG);
       bool running = true;
+      sdl_system(logging, 0);
       while ((running) && (PC < (int)RAM.getSize())){
         uint8_t opcode = RAM.read(logging, PC);
-        PC++;
         switch(opcode){
           case 0b0:{
             //log(logging, "HLT", {});
-            //halt();
+            halt(logging);
             running = false;
             break;
           }
@@ -321,7 +363,8 @@ class CPU{
           
           case 0b1100:{
             //log(logging, "ENS", {});
-            //ens();
+            PC++;
+            ens(logging);
             break;
           }
           
@@ -342,7 +385,6 @@ class CPU{
              break;
           }
         }
-        running = false;
       }
     }
 };
@@ -351,7 +393,7 @@ int main(){
   CPU computer;
   bool logging = true;
   std::vector<uint8_t> PRG = {
-    0b0
+    0b1100, 0b0
   };
   computer.run(logging, PRG);
   return 0;
