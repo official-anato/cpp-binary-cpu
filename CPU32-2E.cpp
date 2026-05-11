@@ -187,7 +187,7 @@ class CPU{
     }
 
   public:
-    void ALU(const bool logging){}
+    void ALU(const bool logging, const uint8_t MD, const uint32_t A, const uint32_t B, const uint32_t R, const uint8_t operation){}
     
     void jmp(const bool logging, const uint8_t MD, const uint32_t value){}
     
@@ -324,31 +324,51 @@ class CPU{
             
           case 0b1: { // Add
             //log(logging, "ADD", {std::to_string(MD), std::to_string(A), std::to_string(B), std::to_string(R)});
-            //ALU(MD, A, B, R, 0b00);
+            uint8_t MD = _fetch8(logging);
+            uint32_t A = _fetch32(logging);
+            uint32_t B = _fetch32(logging);
+            uint32_t R = _fetch32(logging);
+            ALU(logging, MD, A, B, R, 0b00);
             break;
           }
           
           case 0b10:{ // Sub
             //log(logging, "SUB", {std::to_string(MD), std::to_string(A), std::to_string(B), std::to_string(R)});
-            //ALU(MD, A, B, R, 0b01);
+            uint8_t MD = _fetch8(logging);
+            uint32_t A = _fetch32(logging);
+            uint32_t B = _fetch32(logging);
+            uint32_t R = _fetch32(logging);
+            ALU(logging, MD, A, B, R, 0b01);
             break;
           }
           
           case 0b11:{ // Mul
             //log(logging, "MUL", {std::to_string(MD), std::to_string(A), std::to_string(B), std::to_string(R)});
-            //ALU(MD, A, B, R, 0b10);
+            uint8_t MD = _fetch8(logging);
+            uint32_t A = _fetch32(logging);
+            uint32_t B = _fetch32(logging);
+            uint32_t R = _fetch32(logging);
+            ALU(logging, MD, A, B, R, 0b10);
             break;
           }
           
           case 0b100:{ // Div
             //log(logging, "DIV", {std::to_string(MD), std::to_string(A), std::to_string(B), std::to_string(R)});
-            //ALU(MD, A, B, R, 0b11);
+            uint8_t MD = _fetch8(logging);
+            uint32_t A = _fetch32(logging);
+            uint32_t B = _fetch32(logging);
+            uint32_t R = _fetch32(logging);
+            ALU(logging, MD, A, B, R, 0b11);
             break;
           }
           
           case 0b101:{ // Mod
             //log(logging, "MOD", {std::to_string(MD), std::to_string(A), std::to_string(B), std::to_string(R)});
-            //ALU(MD, A, B, R, 0b100);
+            uint8_t MD = _fetch8(logging);
+            uint32_t A = _fetch32(logging);
+            uint32_t B = _fetch32(logging);
+            uint32_t R = _fetch32(logging);
+            ALU(logging, MD, A, B, R, 0b100);
             break;
           }
           
@@ -401,7 +421,8 @@ class CPU{
           
           case 0b1011:{
             //log(logging, "SDL", {});
-            //sdl_system(logging, intcode); // This command will function like interrupt(), but will communicate with SDL instead.
+            uint8_t intcode = _fetch8(logging);
+            sdl_system(logging, intcode); // This command will function like interrupt(), but will communicate with SDL instead.
             break;
           }
           
@@ -438,12 +459,46 @@ class CPU{
     }
 };
 
-int main(){
+int main(int argc, char* argv[]){
+  std::vector<uint8_t> PRG = {};
+
+  // argv[0] is the program name; Ignore.
+  // argv[1] is the program filename.
+  if (argc < 2){
+    std::cerr << "Usage: " << argv[0] << " <program.bin>" << std::endl;
+    return 1;
+  }
+
+  else if (argc > 2){
+    std::cerr << "Error: Too many arguments provided." << std::endl;
+    return 1;
+  }
+
+  else{
+    std::string filename = argv[1];
+    if (!fs::exists(filename)){
+      std::cerr << "Error: File '" << filename << "' does not exist." << std::endl;
+      return 1;
+    }
+
+    else{
+      std::ifstream file(filename, std::ios::binary);
+      if (!file.is_open()){
+        std::cerr << "Error: Could not open file '" << filename << "'." << std::endl;
+        return 1;
+      }
+
+      // Read the file byte by byte and store it in PRG.
+      uint8_t byte;
+      while (file.read(reinterpret_cast<char*>(&byte), sizeof(byte))){
+        PRG.push_back(byte);
+      }
+      file.close();
+    }
+  }
+
   CPU computer;
   bool logging = true;
-  std::vector<uint8_t> PRG = {
-    0b1100, 0b0
-  };
   computer.run(logging, PRG);
   return 0;
 }
