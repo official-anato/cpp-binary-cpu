@@ -103,8 +103,9 @@ class CPU{
     bool Carry = false;
     bool Sign = false;
     bool sdl_running = false;
-    int PC = 0;
+    int PC = -1;
     bool save_output = false;
+    bool internal_logging = false;
     std::string save_filename = "save.txt";
     RAM_Hardware RAM = RAM_Hardware(65535);
     Registers_Hardware Registers;
@@ -120,7 +121,6 @@ class CPU{
     uint16_t _fetch16(const bool logging){
       uint8_t val1 = _fetch8(logging);
       uint8_t val2 = _fetch8(logging);
-      PC += 2;
       return (val1 << 8) | val2;
     }
 
@@ -128,7 +128,6 @@ class CPU{
       uint8_t val1 = _fetch8(logging);
       uint8_t val2 = _fetch8(logging);
       uint8_t val3 = _fetch8(logging);
-      PC += 3;
       return (val1 << 16) | (val2 << 8) | val3;
     }
 
@@ -137,7 +136,6 @@ class CPU{
       uint8_t val2 = _fetch8(logging);
       uint8_t val3 = _fetch8(logging);
       uint8_t val4 = _fetch8(logging);
-      PC += 4;
       return (val1 << 24) | (val2 << 16) | (val3 << 8) | val4;
     }
 
@@ -163,13 +161,44 @@ class CPU{
       else if ((int)res == 0){Zero = true; Carry = false; Sign = false;}
     }
 
+    uint8_t _get_value(uint8_t MD, uint32_t A, const std::string& func_name){
+      switch (MD){
+        case 0b00:{
+          return A;
+          break;
+        }
+        
+        case 0b01:{
+          return Registers.read(internal_logging, (int)A);
+          break;
+        }
+        
+        case 0b10:{
+          return RAM.read(internal_logging, (int)A);
+          break;
+        }
+        
+        default:{
+          _0b11exception(func_name);
+          break;
+        }
+      }
+      return 0;
+    }
+
   public:
     void ALU(const bool logging){}
-    void jmp(const bool logging){}
-    void jeq(const bool logging){}
-    void jlt(const bool logging){}
-    void jgt(const bool logging){}
-    void cmp(const bool logging){}
+    
+    void jmp(const bool logging, const uint8_t MD, const uint32_t value){}
+    
+    void jeq(const bool logging, const uint8_t MD, const uint32_t value){}
+    
+    void jlt(const bool logging, const uint8_t MD, const uint32_t value){}
+    
+    void jgt(const bool logging, const uint8_t MD, const uint32_t value){}
+    
+    void cmp(const bool logging, const uint8_t MD, const uint32_t value){}
+
     void interrupt(const bool logging, const uint32_t MD, const uint32_t intcode){
       switch (intcode & 0xff){
 
@@ -276,9 +305,11 @@ class CPU{
     void mov(const bool logging){}
 
     void run(const bool logging, const std::vector<uint8_t>& PRG){
+      internal_logging = logging;
       load_data_to_RAM(logging, PRG);
       bool running = true;
       sdl_system(logging, 0);
+      PC++;
       while ((running) && (PC < (int)RAM.getSize())){
         uint8_t opcode = RAM.read(logging, PC);
         switch(opcode){
@@ -327,31 +358,33 @@ class CPU{
           // and 01 being absolute.
           case 0b110:{
             //log(logging, "JMP", {std::to_string(MD), std::to_string(value)});
-            //jmp(MD, value);
+            uint8_t MD = _fetch8(logging); // Register 0
+            uint32_t value = _fetch32(logging); // Register 1
+            jmp(logging, MD, value);
             break;
           }
           
           case 0b111:{
             //log(logging, "JEQ", {std::to_string(MD), std::to_string(value)});
-            //jeq(MD, value);
+            //jeq(logging, MD, value);
             break;
           }
           
           case 0b1000:{
             //log(logging, "JLT", {std::to_string(MD), std::to_string(value)});
-            //jlt(MD, value);
+            //jlt(logging, MD, value);
             break;
           }
           
           case 0b1001:{
             //log(logging, "JGT", {std::to_string(MD), std::to_string(value)});
-            //jgt(MD, value);
+            //jgt(logging, MD, value);
             break;
           }
           
           case 0b1010:{
             //log(logging, "CMP", {std::to_string(MD), std::to_string(A), std::to_string(B)});
-            //cmp(MD, A, B);
+            //cmp(logging, MD, A, B);
             break;
           }
           
@@ -363,20 +396,19 @@ class CPU{
           
           case 0b1100:{
             //log(logging, "ENS", {});
-            PC++;
             ens(logging);
             break;
           }
           
           case 0b1101:{
             //log(logging, "MOV", {std::to_string(MD), std::to_string(A), std::to_string(B)});
-            //mov(MD, A, B);
+            //mov(logging, MD, A, B);
             break;
           }
 
           case 0b1110:{
             //log(logging, "INT", {std::to_string(MD), std::to_string(value)});
-            //interrupt(MD, value);
+            //interrupt(logging, MD, value);
             break;
           }
 
