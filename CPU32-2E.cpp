@@ -103,10 +103,10 @@ class CPU{
     bool Carry = false;
     bool Sign = false;
     bool sdl_running = false;
-    int PC = -1;
+    int PC = 0;
     bool save_output = false;
     bool internal_logging = false;
-    std::string save_filename = "save.txt";
+    std::string save_filename = "ANA32_Halt.txt";
     RAM_Hardware RAM = RAM_Hardware(65535);
     Registers_Hardware Registers;
     SDL_GRAPHICS Graphics;
@@ -197,7 +197,7 @@ class CPU{
     
     void jgt(const bool logging, const uint8_t MD, const uint32_t value){}
     
-    void cmp(const bool logging, const uint8_t MD, const uint32_t value){}
+    void cmp(const bool logging, const uint8_t MD, const uint32_t A, const uint32_t B){}
 
     void interrupt(const bool logging, const uint32_t MD, const uint32_t intcode){
       switch (intcode & 0xff){
@@ -309,9 +309,11 @@ class CPU{
       load_data_to_RAM(logging, PRG);
       bool running = true;
       sdl_system(logging, 0);
-      PC++;
       while ((running) && (PC < (int)RAM.getSize())){
         uint8_t opcode = RAM.read(logging, PC);
+        if (PC != 0){
+          PC++;
+        }
         switch(opcode){
           case 0b0:{
             //log(logging, "HLT", {});
@@ -358,33 +360,42 @@ class CPU{
           // and 01 being absolute.
           case 0b110:{
             //log(logging, "JMP", {std::to_string(MD), std::to_string(value)});
-            uint8_t MD = _fetch8(logging); // Register 0
-            uint32_t value = _fetch32(logging); // Register 1
+            uint8_t MD = _fetch8(logging);
+            uint32_t value = _fetch32(logging);
             jmp(logging, MD, value);
             break;
           }
           
           case 0b111:{
             //log(logging, "JEQ", {std::to_string(MD), std::to_string(value)});
-            //jeq(logging, MD, value);
+            uint8_t MD = _fetch8(logging);
+            uint32_t value = _fetch32(logging);
+            jeq(logging, MD, value);
             break;
           }
           
           case 0b1000:{
             //log(logging, "JLT", {std::to_string(MD), std::to_string(value)});
-            //jlt(logging, MD, value);
+            uint8_t MD = _fetch8(logging);
+            uint32_t value = _fetch32(logging);
+            jlt(logging, MD, value);
             break;
           }
           
           case 0b1001:{
             //log(logging, "JGT", {std::to_string(MD), std::to_string(value)});
-            //jgt(logging, MD, value);
+            uint8_t MD = _fetch8(logging);
+            uint32_t value = _fetch32(logging);
+            jgt(logging, MD, value);
             break;
           }
           
           case 0b1010:{
             //log(logging, "CMP", {std::to_string(MD), std::to_string(A), std::to_string(B)});
-            //cmp(logging, MD, A, B);
+            uint8_t MD = _fetch8(logging);
+            uint32_t A = _fetch32(logging);
+            uint32_t B = _fetch32(logging);
+            cmp(logging, MD, A, B);
             break;
           }
           
@@ -396,6 +407,7 @@ class CPU{
           
           case 0b1100:{
             //log(logging, "ENS", {});
+            PC++;
             ens(logging);
             break;
           }
@@ -408,7 +420,9 @@ class CPU{
 
           case 0b1110:{
             //log(logging, "INT", {std::to_string(MD), std::to_string(value)});
-            //interrupt(logging, MD, value);
+            uint8_t MD = _fetch8(logging);
+            uint32_t value = _fetch32(logging);
+            interrupt(logging, MD, value);
             break;
           }
 
