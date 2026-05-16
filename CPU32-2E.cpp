@@ -302,7 +302,24 @@ class CPU{
       save_output = true;
     }
 
-    void mov(const bool logging, const uint8_t MD, const uint32_t A, const uint32_t B){}
+    void mov(const bool logging, const uint8_t MD, const uint32_t A, const uint32_t B){
+      uint32_t source = A;
+      uint32_t target = B;
+      uint8_t MD = (MD) & 0b11;
+      switch(MD){
+        case 0b01:{ // RAM
+          RAM.write(logging, B, A);
+        }
+
+        case 0b10:{ // Registers
+          Registers.write(logging, B, A);
+        }
+        default:{
+          throw std::runtime_error("Invalid type used in SOURCE or TARGET: Immediate or or byte 0b00000011.");
+          break;
+        }
+      }
+    }
 
     void run(const bool logging, const std::vector<uint8_t>& PRG){
       internal_logging = logging;
