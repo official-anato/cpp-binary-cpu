@@ -35,7 +35,20 @@ class RAM_Hardware {
 
     void write(const bool logging, const uint32_t address, const uint32_t value){
       if (address < RAM.size()){
-        RAM[address] = value;
+        if (value < 255){
+          RAM[address] = value;
+        }
+
+        else {
+          RAM[address] = value;
+          RAM[address+1] = (value >> 8) & 0xFF;
+          RAM[address+2] = (value >> 16) & 0xFF;
+          RAM[address+3] = (value >> 24) & 0xFF;
+        }
+      }
+
+      else {
+        throw std::runtime_error("Attempted to write to an invalid RAM address.");
       }
     }
 
@@ -70,9 +83,13 @@ class Registers_Hardware{
       if (address < Registers.size()){
         Registers[address] = value;
       }
+
+      else {
+        throw std::runtime_error("Attempted to write to an invalid RAM address.");
+      }
     }
 
-    uint8_t read(const bool logging, const uint32_t address){
+    uint32_t read(const bool logging, const uint32_t address){
       if (address < Registers.size()){
         uint32_t value = Registers[address];
         return value;
@@ -116,9 +133,31 @@ class Cpu{
       }
     }
 
-    void kernel_print(const bool logging, const uint32_t message_location, const uint32_t length, const uint8_t mode){
+    void kernel_print(const bool logging, const uint32_t message_location, const uint32_t length, const uint8_t MD){
+      uint8_t mode = (MD) & 0b11; // ADR (0x2) or REG (0x1)
+      uint8_t mode2 = (MD >> 2) & 0b11; // CHAR (0x0) or INT (0x1)
       for (int i = message_location; i <= message_location + (length-1); i++){ // Starting at message_location and stopping at length.
-        std::cout << RAM.read(logging, i) << std::endl;
+        if (mode == 0b10){
+          if (mode2 == 0x0){
+            std::cout << (char)RAM.read(logging, i);
+          }
+          else{
+            std::cout << (int)RAM.read(logging, i);
+          }
+        }
+
+        else if (mode == 0b01){
+          if (mode2 == 0x0){
+            std::cout << (char)Registers.read(logging, i);
+          }
+          else{
+            std::cout << (int)Registers.read(logging, i);
+          }
+        }
+
+        else{
+          throw std::invalid_argument("Invalid mode for kernel_print.");
+        }
       }
     }
 
@@ -216,7 +255,7 @@ class Cpu{
     }
     */
 
-    uint8_t _get_value(const bool logging, uint8_t MD, uint32_t A, const std::string& func_name){
+    uint32_t _get_value(const bool logging, uint8_t MD, uint32_t A, const std::string& func_name){
       switch (MD){
         case 0b00:{
           return A;
@@ -466,7 +505,7 @@ class Cpu{
       internal_logging = logging;
       load_data_to_RAM(logging, PRG);
       while ((running) && (PC < (int)RAM.getSize())){
-        uint8_t opcode = RAM.read(logging, PC);
+        uint8_t opcode = _fetch(logging);
         switch(opcode){
           case 0b0:{
             halt(logging);
@@ -569,20 +608,7 @@ class Cpu{
           
           case 0b1100:{
             PC++;
-            // Temporarily, this opcode will be used a testing ground.
-            // Write to RAM starting from address 1.
-            ALU(logging, 0b100000, 0b01000000, 0b1, 0b1, 0b00);
-            
-            // Write to Registers.
-            mov(logging, 0b0100, 0b1, 0b00); // loc
-            mov(logging, 0b0100, 0b1, 0b01); // len
-            mov(logging, 0b0100, 0b1, 0b10); // mode // Ignore this one for now.
-
-            // Call interrupt()
-            interrupt(logging, 0b0, 0b0);
-
-            // ens(logging);
-            halt(logging);
+            ens(logging);
             break;
           }
           
@@ -611,6 +637,23 @@ class Cpu{
     
 };
 
+// Tested opcodes so far:
+// PS: All of these work perfectly. Unless it follows the exact behavior I expect, it will not appear here.
+// PS, 2: SDL is an exempt opcode, as it is a future implementation.
+// HLT
+// ADD
+// SUB
+// MUL
+// DIV
+// MOD
+// JMP
+// JEQ
+// JLT
+// JGT
+// ENS
+// MOV
+// INT
+
 int main(int argc, char* argv[]) {
   std::vector<uint8_t> PRG = {};
   const char* os = 
@@ -623,7 +666,6 @@ int main(int argc, char* argv[]) {
   #else
     "Unknown";
   #endif
-  std::cout << os << std::endl;
 
   // argv[0] is the program name; Ignore.
   // argv[1] is the option ("Compile" or "File")
@@ -642,7 +684,7 @@ int main(int argc, char* argv[]) {
   std::string filename = argv[2];
   std::string target_filename;
 
-  if (option == "Compile") {
+  if ((option == "Compile") || (option == "compile")) {
     std::string command = (os == "Windows") ? "ASM32 \"" + filename + "\"" : "./ASM32 \"" + filename + "\"";
     
     std::cout << "Compiling: " << filename << "..." << std::endl;
@@ -658,7 +700,7 @@ int main(int argc, char* argv[]) {
     // e.g., "asm.txt" becomes "asm.txt.bin"
     target_filename = filename + ".bin";
   } 
-  else if (option == "File") {
+  else if ((option == "File") || (option == "file")) {
     // Just read the file provided directly
     target_filename = filename;
   } 
@@ -681,14 +723,13 @@ int main(int argc, char* argv[]) {
 
   // Read the file byte by byte and store it in PRG.
   // NOTES: Credit to Github Copilot for suggesting this code.
-  // I do not understand this yet, but I will eventually learn.
+  // I don't understand this yet, but I will eventually learn.
   uint8_t byte;
   while (file.read(reinterpret_cast<char*>(&byte), sizeof(byte))) {
     PRG.push_back(byte);
   }
   file.close();
 
-  // Assuming 'Cpu' is defined elsewhere in your project
   Cpu computer;
   bool logging = true;
   computer.run(logging, PRG);
