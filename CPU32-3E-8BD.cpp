@@ -16,7 +16,27 @@
 #include <cstdint>
 #include <climits>
 #include <filesystem>
+// #include <source_location> // Re-enable if you ever need to debug.
 namespace fs = std::filesystem;
+
+/*
+// This function will be rewritten to make sure that it's global
+// And doesn't destroy the hard drive/SSD.
+void log(const bool& logging, const std::string& opcode, const std::vector<std::string>& params){
+if (!logging) return;
+else{
+std::fstream file("vm-log.txt", std::ios::app);
+if (file.is_open()){
+file << "[" << PC << "]" << ": ";
+file << "Executing opcode ";
+file << opcode;
+file << " with values {";
+for (const auto& str : params){file << str << ", ";}
+file << "}\n";
+}
+}
+}
+*/
 
 class RAM_Hardware {
   private:
@@ -35,21 +55,26 @@ class RAM_Hardware {
 
     void write(const bool logging, const uint32_t address, const uint32_t value){
       if (address < RAM.size()){
-        if (value < 255){
-          RAM[address] = value;
-        }
-
-        else {
-          RAM[address] = value;
-          RAM[address+1] = (value >> 8) & 0xFF;
-          RAM[address+2] = (value >> 16) & 0xFF;
-          RAM[address+3] = (value >> 24) & 0xFF;
-        }
+        RAM[address] = value;
       }
 
       else {
         throw std::runtime_error("Attempted to write to an invalid RAM address.");
       }
+    }
+
+    void write32(const bool& logging, const uint32_t start_addr, const uint32_t data){ // Writes 1 word to RAM
+      // Get the 4 bytes
+      uint8_t LSB = (data) & 0xFF;
+      uint8_t mid_LSB = (data >> 8) & 0xFF;
+      uint8_t mid_MSB = (data >> 16) & 0xFF;
+      uint8_t MSB = (data >> 24) & 0xFF;
+
+      // Call the function.
+      write(logging, start_addr, LSB);
+      write(logging, start_addr+1, mid_LSB);
+      write(logging, start_addr+2, mid_MSB);
+      write(logging, start_addr+3, MSB);
     }
 
     uint8_t read(const bool logging, const uint32_t address){
@@ -61,6 +86,15 @@ class RAM_Hardware {
       else{
         throw std::runtime_error("Error: Attempted to read from an invalid RAM address.");
       }
+    }
+
+    uint32_t read32(const bool logging, const uint32_t start_addr){
+      uint8_t LSB = read(logging, start_addr + 0);
+      uint8_t mid_LSB = read(logging, start_addr + 1);
+      uint8_t mid_MSB = read(logging, start_addr + 2);
+      uint8_t MSB = read(logging, start_addr + 3);
+      uint32_t chunk32 = LSB | (mid_LSB << 8) | (mid_MSB << 16) | (MSB << 24);
+      return chunk32;
     }
 };
 
@@ -235,25 +269,6 @@ class Cpu{
     void _0b11exception(std::string func_name){
       throw std::invalid_argument("0b00000011 is not accepted as a parameter for " + func_name);
     }
-    
-    /*
-    // This function will be rewritten to make sure that it's global
-    // And doesn't destroy the hard drive/SSD.
-    void log(const bool& logging, const std::string& opcode, const std::vector<std::string>& params){
-      if (!logging) return;
-      else{
-       std::fstream file("vm-log.txt", std::ios::app);
-       if (file.is_open()){
-          file << "[" << PC << "]" << ": ";
-          file << "Executing opcode ";
-         file << opcode;
-         file << " with values {";
-          for (const auto& str : params){file << str << ", ";}
-          file << "}\n";
-         }
-      }
-    }
-    */
 
     uint32_t _get_value(const bool logging, uint8_t MD, uint32_t A, const std::string& func_name){
       switch (MD){
@@ -268,7 +283,7 @@ class Cpu{
         }
         
         case 0b10:{
-          return RAM.read(logging, (int)A);
+          return RAM.read32(logging, (int)A);
           break;
         }
         
@@ -380,9 +395,9 @@ class Cpu{
     void cmp(const bool logging, const uint8_t MD, const uint32_t A, const uint32_t B){
       uint8_t MD1 = (MD) & 0b11;
       uint8_t MD2 = (MD >> 2) & 0b11;
-      uint8_t X = _get_value(logging, MD1, A, "'A'");
-      uint8_t Y = _get_value(logging, MD2, B, "'B'");
-      uint8_t res = X-Y;
+      uint32_t X = _get_value(logging, MD1, A, "'A'");
+      uint32_t Y = _get_value(logging, MD2, B, "'B'");
+      uint32_t res = X-Y;
       __UpdFlg(logging, res);
     }
     
@@ -456,7 +471,7 @@ class Cpu{
     void mov(const bool logging, const uint8_t MD, const uint32_t A, const uint32_t B){
       uint8_t MD1 = (MD) & 0b11;
       uint8_t MD2 = (MD >> 2) & 0b11;
-      uint8_t source_value = _get_value(logging, MD1, A, "'A'");
+      uint32_t source_value = _get_value(logging, MD1, A, "'A'");
       _writedata(logging, B, MD2, source_value);
     }
 
