@@ -22,15 +22,7 @@ namespace fs = std::filesystem;
 
 class motherboard{
   private:
-    // This is just reserved codespace. Nothing is here for now.
-    // Note to self - this is where your logging will go, too!!!
-    bool logging_enabled;
-    std::vector<std::string> logs;
-    void log(){}
-    void clear_logs(){}
-    void SL2D(){ // S(ave) L(ogs) 2(to) D(isk)
-    }
-  public:
+    // Classes
     class BIOS{
       private:
         // No contents yet
@@ -167,15 +159,6 @@ class motherboard{
     
     class Cpu{
       private:
-        motherboard* board;
-        Registers_Hardware Registers;
-        bool Zero = false;
-        bool Carry = false;
-        bool Sign = false;
-        bool sdl_running = false;
-        int PC = 0;
-        bool internal_logging = false;
-    
         void kernel_print(const bool logging, const uint32_t message_location, const uint32_t length, const uint8_t MD){
           uint8_t mode = (MD) & 0b11; // ADR (0x2) or REG (0x1)
           uint8_t mode2 = (MD >> 2) & 0b11; // CHAR (0x0) or INT (0x1)
@@ -280,14 +263,24 @@ class motherboard{
             }
           }
         }
+
+        void kernel_init_shutdown(const bool logging){
+          board->powered_on = false;
+        }
         
       public:
+        motherboard* board;
+        Registers_Hardware Registers;
+        bool Zero = false;
+        bool Carry = false;
+        bool Sign = false;
+        bool sdl_running = false;
+        int PC = 0;
+        bool internal_logging = false;
+
         Cpu(motherboard* b) {
             board = b; 
         }
-
-        bool save_output = false;
-        std::string save_filename = "halt_finish.txt";
         
         // Underscore signifies helper functions.
         uint8_t _fetch(const bool logging){
@@ -486,39 +479,13 @@ class motherboard{
         }
         
         int halt(const bool logging){
-          if (save_output){
-            // Declare file
-            std::fstream file(save_filename, std::ios::app);
-            
-            if (file.is_open()){
-              // Formatting for the file output
-              file  << "RAM (0 - 65535): [";
-              
-              // Iterate through items in RAM and append them one by one.
-              for (const auto& str : board->RAM.getRAM()){file << str << ", ";}
-              file << "]\nPC: " << PC << "\nRegisters (R0 - R31): [";
-              
-              // Do the same for registers as well
-              for (const auto& str : Registers.getRegisters()){file << str << ", ";}
-              file << "]";
-              file.close();
-            }
-            
-            std::cout << "Program has finished. Saving data to " << save_filename << std::endl;
-            // std::exit(EXIT_SUCCESS);
-            return 0;
-            }
-            
-            else{
-              // std::cout << "Program has finished." << std::endl; // Debug code. Enable only if you suspect your code shouldn't be stopping to see why.
-              // std::exit(EXIT_SUCCESS);
-              return 0;
-            }
+          kernel_init_shutdown(logging); // This is temporary!!!!
+          return 0;
         }
         
         void ens(const bool logging){
-          if (save_output == true){ save_output = false;}
-          else{save_output = true;}
+          if (board->save_output == true){ board->save_output = false;}
+          else{board->save_output = true;}
         }
         
         void mov(const bool logging, const uint8_t MD, const uint32_t A, const uint32_t B){
@@ -709,8 +676,13 @@ class motherboard{
         }
     };
 
+    // Internal variables
     std::vector<uint8_t> PRG;
+    bool powered_on = false;
+    bool save_output = false;
+    std::string save_filename = "halt_finish.txt";
 
+    // Establish hardware
     RAM_Hardware RAM = RAM_Hardware(65535);
     SDL_GRAPHICS Graphics;
     Cpu CPU = Cpu(this);
@@ -722,30 +694,49 @@ class motherboard{
         }
       }
     }
-    
+
+    bool logging_enabled;
+    std::vector<std::string> logs;
+    void log(){}
+    void clear_logs(){}
+    void SL2D(){ // S(ave) L(ogs) 2(to) D(isk)
+    }
+  public:
     void power_on(const bool logging, const std::vector<uint8_t> PRG){
+      powered_on = true;
       load_data_to_RAM(logging, PRG);
-      CPU.run(logging);
-      std::cout << "if this prints im the goat" << std::endl;
+      while (powered_on){ // This is the update cycle.
+        CPU.run(logging);
+      }
+
+      if (save_output){
+        // Declare file
+        std::fstream file(save_filename, std::ios::app);
+            
+        if (file.is_open()){
+          // Formatting for the file output
+          file  << "RAM (0 - 65535): [";
+              
+          // Iterate through items in RAM and append them one by one.
+          for (const auto& str : RAM.getRAM()){file << (int)str << ", ";}
+          file << "]\nPC: " << CPU.PC << "\nRegisters (R0 - R31): [";
+              
+          // Do the same for registers as well
+          for (const auto& str : CPU.Registers.getRegisters()){file << (int)str << ", ";}
+          file << "]";
+          file.close();
+        }
+            
+        std::cout << "Program has finished. Saving data to " << save_filename << std::endl;
+        std::exit(EXIT_SUCCESS);
+        }
+            
+            else{
+              // std::cout << "Program has finished." << std::endl; // Debug code. Enable only if you suspect your code shouldn't be stopping to see why.
+              std::exit(EXIT_SUCCESS);
+            }
     }
 };
-
-// Tested opcodes so far:
-// PS: All of these work perfectly. Unless it follows the exact behavior I expect, it will not appear here.
-// PS, 2: SDL is an exempt opcode, as it is a future implementation.
-// HLT
-// ADD
-// SUB
-// MUL
-// DIV
-// MOD
-// JMP
-// JEQ
-// JLT
-// JGT
-// ENS
-// MOV
-// INT
 
 int main(int argc, char* argv[]) {
   std::vector<uint8_t> PRG = {};
