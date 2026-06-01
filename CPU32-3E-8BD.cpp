@@ -8,6 +8,7 @@
  >> without reinventing the wheel.
 */
 
+// #include <source_location> // Re-enable if you ever need to debug - NEEDS C++20 or newer!
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -16,12 +17,18 @@
 #include <climits>
 #include <filesystem>
 #include <chrono>
-
-// #include <source_location> // Re-enable if you ever need to debug.
 namespace fs = std::filesystem;
 
 class motherboard{
   private:
+    // Logging functions.
+    bool logging_enabled = false;
+    std::vector<std::string> logs;
+    void log(){}
+    void clear_logs(){}
+    void SL2D(){ // S(ave) L(ogs) 2(to) D(isk)
+    }
+
     // Classes
     class BIOS{
       private:
@@ -53,6 +60,12 @@ class motherboard{
         std::vector<uint8_t> RAM;
     
       public:
+        motherboard* board;
+
+        RAM_Hardware(motherboard* b) {
+            board = b; 
+        }
+
         RAM_Hardware(size_t size_bytes) : RAM(size_bytes, 0) {}
     
         std::vector<uint8_t> getRAM() const {
@@ -81,10 +94,10 @@ class motherboard{
           uint8_t MSB = (data >> 24) & 0xFF;
     
           // Call the function.
-          write(logging, start_addr, LSB);
-          write(logging, start_addr+1, mid_LSB);
-          write(logging, start_addr+2, mid_MSB);
-          write(logging, start_addr+3, MSB);
+          write(board->logging_enabled, start_addr, LSB);
+          write(board->logging_enabled, start_addr+1, mid_LSB);
+          write(board->logging_enabled, start_addr+2, mid_MSB);
+          write(board->logging_enabled, start_addr+3, MSB);
         }
     
         uint8_t read(const bool logging, const uint32_t address){
@@ -94,15 +107,16 @@ class motherboard{
           }
     
           else{
+            std::cout << (int)address << std::endl;
             throw std::runtime_error("Error: Attempted to read from an invalid RAM address.");
           }
         }
     
         uint32_t read32(const bool logging, const uint32_t start_addr){
-          uint8_t LSB = read(logging, start_addr + 0);
-          uint8_t mid_LSB = read(logging, start_addr + 1);
-          uint8_t mid_MSB = read(logging, start_addr + 2);
-          uint8_t MSB = read(logging, start_addr + 3);
+          uint8_t LSB = read(board->logging_enabled, start_addr + 0);
+          uint8_t mid_LSB = read(board->logging_enabled, start_addr + 1);
+          uint8_t mid_MSB = read(board->logging_enabled, start_addr + 2);
+          uint8_t MSB = read(board->logging_enabled, start_addr + 3);
           uint32_t chunk32 = LSB | (mid_LSB << 8) | (mid_MSB << 16) | (MSB << 24);
           return chunk32;
         }
@@ -154,30 +168,30 @@ class motherboard{
         void init_sys(){}
         void write_to_VRAM(){}
         void read_from_VRAM(){}
-        void draw_image(){}
+        void draw_image(){} // Creates an image based on the data present in the VRAM.
     }; // Currently empty class; to be filled in the future.
     
     class Cpu{
       private:
         void kernel_print(const bool logging, const uint32_t message_location, const uint32_t length, const uint8_t MD){
-          uint8_t mode = (MD) & 0b11; // ADR (0x2) or REG (0x1)
-          uint8_t mode2 = (MD >> 2) & 0b11; // CHAR (0x0) or INT (0x1)
+          uint8_t mode = (MD) & 0b11; // ADR (0b10) or REG (0b01)
+          uint8_t mode2 = (MD >> 2) & 0b11; // CHAR (0b00) or INT (0b01)
           for (int i = message_location; i <= message_location + (length-1); i++){ // Starting at message_location and stopping at length.
             if (mode == 0b10){
               if (mode2 == 0x0){
-                std::cout << (char)board->RAM.read(logging, i); // <--
+                std::cout << (char)board->RAM.read(board->logging_enabled, i); // <--
               }
               else{
-                std::cout << (int)board->RAM.read(logging, i);
+                std::cout << (int)board->RAM.read(board->logging_enabled, i);
               }
             }
     
             else if (mode == 0b01){
               if (mode2 == 0x0){
-                std::cout << (char)Registers.read(logging, i);
+                std::cout << (char)Registers.read(board->logging_enabled, i);
               }
               else{
-                std::cout << (int)Registers.read(logging, i);
+                std::cout << (int)Registers.read(board->logging_enabled, i);
               }
             }
     
@@ -269,7 +283,6 @@ class motherboard{
         }
         
       public:
-        motherboard* board;
         Registers_Hardware Registers;
         bool Zero = false;
         bool Carry = false;
@@ -277,6 +290,7 @@ class motherboard{
         bool sdl_running = false;
         int PC = 0;
         bool internal_logging = false;
+        motherboard* board;
 
         Cpu(motherboard* b) {
             board = b; 
@@ -284,7 +298,7 @@ class motherboard{
         
         // Underscore signifies helper functions.
         uint8_t _fetch(const bool logging){
-          uint8_t data = board->RAM.read(logging, PC);
+          uint8_t data = board->RAM.read(board->logging_enabled, PC);
           PC++;
           return data;
         }
@@ -322,12 +336,12 @@ class motherboard{
             }
             
             case 0b01:{
-              return Registers.read(logging, (int)A);
+              return Registers.read(board->logging_enabled, A);
               break;
             }
             
             case 0b10:{
-              return board->RAM.read32(logging, (int)A);
+              return board->RAM.read32(board->logging_enabled, A);
               break;
             }
             
@@ -340,11 +354,11 @@ class motherboard{
         }
         
         void _writeram(const bool logging, uint32_t R, uint32_t value){
-          board->RAM.write(logging, R, value);
+          board->RAM.write(board->logging_enabled, R, value);
         }
         
         void _writeregister(const bool logging, uint32_t R, uint32_t value){
-          Registers.write(logging, R, value);
+          Registers.write(board->logging_enabled, R, value);
         }
         
         void _writedata(const bool logging, uint32_t loc, uint8_t MD3, uint32_t value){
@@ -355,12 +369,12 @@ class motherboard{
             }
             
             case 0b01:{
-              _writeregister(logging, loc, value);
+              _writeregister(board->logging_enabled, loc, value);
               break;
             }
             
             case 0b10:{
-              _writeram(logging, loc, value); // Create a detecion mechanism for 32 bit values to start chunking aka split-store.
+              _writeram(board->logging_enabled, loc, value); // Create a detecion mechanism for 32 bit values to start chunking aka split-store.
               break;
             }
             
@@ -379,11 +393,11 @@ class motherboard{
        
        void _UpdFlg(const bool logging, uint8_t MD, uint32_t R){
          if (MD == 0b01){
-           __UpdFlg(logging, Registers.read(logging, R));
+           __UpdFlg(board->logging_enabled, Registers.read(board->logging_enabled, R));
          }
          
          else if (MD == 0b10){
-           __UpdFlg(logging, board->RAM.read(logging, R));
+           __UpdFlg(board->logging_enabled, board->RAM.read(board->logging_enabled, R));
          }
          
          else{
@@ -395,11 +409,11 @@ class motherboard{
           uint8_t MD1 = (MD) & 0b11;
           uint8_t MD2 = (MD >> 2) & 0b11;
           uint8_t MD3 = (MD >> 4) & 0b11;
-          uint32_t X = _get_value(logging, MD1, A, "'A'");
-          uint32_t Y = _get_value(logging, MD2, B, "'B'");
+          uint32_t X = _get_value(board->logging_enabled, MD1, A, "'A'");
+          uint32_t Y = _get_value(board->logging_enabled, MD2, B, "'B'");
           uint32_t res = _math(X, Y, arithmetic);
-          _writedata(logging, R, MD3, res);
-          _UpdFlg(logging, MD3, R);
+          _writedata(board->logging_enabled, R, MD3, res);
+          _UpdFlg(board->logging_enabled, MD3, R);
         }
         
         void jmp(const bool logging, uint8_t MD, uint32_t value){
@@ -407,12 +421,12 @@ class motherboard{
           uint8_t relabs = (MD >> 2) & 0b11;
           switch(relabs){
             case 0b00:{
-              PC = _get_value(logging, MD1, value, "'A'");
+              PC = _get_value(board->logging_enabled, MD1, value, "'A'");
               break;
             }
             
             case 0b01:{
-              PC += _get_value(logging, MD1, value, "'A'");
+              PC += _get_value(board->logging_enabled, MD1, value, "'A'");
               break;
             }
           }
@@ -420,36 +434,36 @@ class motherboard{
         
         void jeq(const bool logging, uint8_t MD, uint32_t value){
           if (Zero == true){
-            jmp(logging, MD, value);
+            jmp(board->logging_enabled, MD, value);
           }
         }
         
         void jlt(const bool logging, uint8_t MD, uint32_t value){
           if (Sign == true){
-            jmp(logging, MD, value);
+            jmp(board->logging_enabled, MD, value);
           }
         }
         
         void jgt(const bool logging, uint8_t MD, uint32_t value){
           if (Sign == false && Zero == false){
-            jmp(logging, MD, value);
+            jmp(board->logging_enabled, MD, value);
           }
         }
-        
+
         void cmp(const bool logging, const uint8_t MD, const uint32_t A, const uint32_t B){
           uint8_t MD1 = (MD) & 0b11;
           uint8_t MD2 = (MD >> 2) & 0b11;
-          uint32_t X = _get_value(logging, MD1, A, "'A'");
-          uint32_t Y = _get_value(logging, MD2, B, "'B'");
+          uint32_t X = _get_value(board->logging_enabled, MD1, A, "'A'");
+          uint32_t Y = _get_value(board->logging_enabled, MD2, B, "'B'");
           uint32_t res = X-Y;
-          __UpdFlg(logging, res);
+          __UpdFlg(board->logging_enabled, res);
         }
         
         void sdl_system(const bool logging, const uint32_t intcode){
           if (!sdl_running){
             board->Graphics.init_sys();
             sdl_running = true;
-            sdl_system(logging, intcode); // Re-run the function to execute the command after initializing SDL.
+            sdl_system(board->logging_enabled, intcode); // Re-run the function to execute the command after initializing SDL.
           }
     
           else{
@@ -491,46 +505,46 @@ class motherboard{
         void mov(const bool logging, const uint8_t MD, const uint32_t A, const uint32_t B){
           uint8_t MD1 = (MD) & 0b11;
           uint8_t MD2 = (MD >> 2) & 0b11;
-          uint32_t source_value = _get_value(logging, MD1, A, "'A'");
-          _writedata(logging, B, MD2, source_value);
+          uint32_t source_value = _get_value(board->logging_enabled, MD1, A, "'A'");
+          _writedata(board->logging_enabled, B, MD2, source_value);
         }
     
         void interrupt(const bool logging, const uint32_t MD, const uint32_t intcode){
           switch (intcode & 0xff){
     
             case 0b0:{ // Print
-              uint32_t message_location = Registers.read(logging, 0); // Register 0
-              uint32_t length = Registers.read(logging, 1); // Register 1
-              uint32_t mode = Registers.read(logging, 2); // Register 2
-              kernel_print(logging, message_location, length, mode);
+              uint32_t message_location = Registers.read(board->logging_enabled, 0); // Register 0
+              uint32_t length = Registers.read(board->logging_enabled, 1); // Register 1
+              uint32_t mode = Registers.read(board->logging_enabled, 2); // Register 2
+              kernel_print(board->logging_enabled, message_location, length, mode);
               break;
             }
     
             case 0b1: { // User Input
-              uint32_t userinput = Registers.read(logging, 0); // Input source - R0
-              uint32_t address = Registers.read(logging, 1); // Writing address - R1
+              uint32_t userinput = Registers.read(board->logging_enabled, 0); // Input source - R0
+              uint32_t address = Registers.read(board->logging_enabled, 1); // Writing address - R1
               break;
             }
     
             case 0b10: { // File Write
-              uint32_t filename_address = Registers.read(logging, 0); // Filename location - R0
-              uint32_t filename_length = Registers.read(logging, 1); // Filename char len - R1
-              uint32_t data_address = Registers.read(logging, 2); // Byte Location - R2
-              uint32_t data_length = Registers.read(logging, 3); // Byte amounr - R3
-              uint8_t mode1 = Registers.read(logging, 4); // mode 1 - R4 - RAM or Registers
-              uint8_t mode2 = Registers.read(logging, 5); // mode 2 - R5 - 32 bit chunking or 8 bit chunking
-              kernel_filewrite(logging, filename_address, filename_length, data_address, data_length, mode1, mode2);
+              uint32_t filename_address = Registers.read(board->logging_enabled, 0); // Filename location - R0
+              uint32_t filename_length = Registers.read(board->logging_enabled, 1); // Filename char len - R1
+              uint32_t data_address = Registers.read(board->logging_enabled, 2); // Byte Location - R2
+              uint32_t data_length = Registers.read(board->logging_enabled, 3); // Byte amounr - R3
+              uint8_t mode1 = Registers.read(board->logging_enabled, 4); // mode 1 - R4 - RAM or Registers
+              uint8_t mode2 = Registers.read(board->logging_enabled, 5); // mode 2 - R5 - 32 bit chunking or 8 bit chunking
+              kernel_filewrite(board->logging_enabled, filename_address, filename_length, data_address, data_length, mode1, mode2);
               break;
             }
     
             case 0b11: { // File Read
-              uint32_t filename_address = Registers.read(logging, 0); // Filename location - R0
-              uint32_t filename_length = Registers.read(logging, 1); // Filename char len - R1
-              uint32_t data_address = Registers.read(logging, 2); // Byte Location - R2
-              uint32_t data_length = Registers.read(logging, 3); // Byte amounr - R3
-              uint8_t mode1 = Registers.read(logging, 4); // mode 1 - R4 - RAM or Registers
-              uint8_t mode2 = Registers.read(logging, 5); // mode 2 - R5 - 32 bit chunking or 8 bit chunking
-              kernel_fileread(logging, filename_address, filename_length, data_address, data_length, mode1, mode2);
+              uint32_t filename_address = Registers.read(board->logging_enabled, 0); // Filename location - R0
+              uint32_t filename_length = Registers.read(board->logging_enabled, 1); // Filename char len - R1
+              uint32_t data_address = Registers.read(board->logging_enabled, 2); // Byte Location - R2
+              uint32_t data_length = Registers.read(board->logging_enabled, 3); // Byte amounr - R3
+              uint8_t mode1 = Registers.read(board->logging_enabled, 4); // mode 1 - R4 - RAM or Registers
+              uint8_t mode2 = Registers.read(board->logging_enabled, 5); // mode 2 - R5 - 32 bit chunking or 8 bit chunking
+              kernel_fileread(board->logging_enabled, filename_address, filename_length, data_address, data_length, mode1, mode2);
               break;
             }
     
@@ -541,63 +555,60 @@ class motherboard{
           }
         }
         
-        void run(const bool& logging){
-          bool running = true;
-          internal_logging = logging;
-          while ((running) && (PC < (int)board->RAM.getSize())){
+        void step(const bool& logging){
+          if (PC < (int)board->RAM.getSize()){
             uint8_t opcode = _fetch(logging);
             switch(opcode){
               case 0b0:{
                 halt(logging);
-                running = false;
                 break;
               }
-                
+              
               case 0b1: { // Add
                 uint8_t MD = _fetch(logging);
                 uint32_t A = _fetch32(logging);
                 uint32_t B = _fetch32(logging);
                 uint32_t R = _fetch32(logging);
-                ALU(logging, MD, A, B, R, 0b00);
+                ALU(board->logging_enabled, MD, A, B, R, 0b00);
                 break;
               }
-              
+            
               case 0b10:{ // Sub
                 uint8_t MD = _fetch(logging);
                 uint32_t A = _fetch32(logging);
                 uint32_t B = _fetch32(logging);
                 uint32_t R = _fetch32(logging);
-                ALU(logging, MD, A, B, R, 0b01);
+                ALU(board->logging_enabled, MD, A, B, R, 0b01);
                 break;
               }
-              
+            
               case 0b11:{ // Mul
                 uint8_t MD = _fetch(logging);
                 uint32_t A = _fetch32(logging);
                 uint32_t B = _fetch32(logging);
                 uint32_t R = _fetch32(logging);
-                ALU(logging, MD, A, B, R, 0b10);
+                ALU(board->logging_enabled, MD, A, B, R, 0b10);
                 break;
               }
-              
+            
               case 0b100:{ // Div
                 uint8_t MD = _fetch(logging);
                 uint32_t A = _fetch32(logging);
                 uint32_t B = _fetch32(logging);
                 uint32_t R = _fetch32(logging);
-                ALU(logging, MD, A, B, R, 0b11);
+                ALU(board->logging_enabled, MD, A, B, R, 0b11);
                 break;
               }
-              
+            
               case 0b101:{ // Mod
                 uint8_t MD = _fetch(logging);
                 uint32_t A = _fetch32(logging);
                 uint32_t B = _fetch32(logging);
                 uint32_t R = _fetch32(logging);
-                ALU(logging, MD, A, B, R, 0b100);
+                ALU(board->logging_enabled, MD, A, B, R, 0b100);
                 break;
               }
-              
+            
               // Here, MD has 2 uses.
               // The first 2 bits are either 01 and 10
               // referring to register or address,
@@ -607,71 +618,74 @@ class motherboard{
               case 0b110:{
                 uint8_t MD = _fetch(logging);
                 uint32_t value = _fetch32(logging);
-                jmp(logging, MD, value);
+                jmp(board->logging_enabled, MD, value);
                 break;
               }
-              
+
               case 0b111:{
                 uint8_t MD = _fetch(logging);
                 uint32_t value = _fetch32(logging);
-                jeq(logging, MD, value);
+                jeq(board->logging_enabled, MD, value);
                 break;
               }
-              
+            
               case 0b1000:{
                 uint8_t MD = _fetch(logging);
                 uint32_t value = _fetch32(logging);
-                jlt(logging, MD, value);
+                jlt(board->logging_enabled, MD, value);
                 break;
               }
-              
+            
               case 0b1001:{
                 uint8_t MD = _fetch(logging);
                 uint32_t value = _fetch32(logging);
-                jgt(logging, MD, value);
+                jgt(board->logging_enabled, MD, value);
                 break;
               }
-              
+            
               case 0b1010:{
                 uint8_t MD = _fetch(logging);
                 uint32_t A = _fetch32(logging);
                 uint32_t B = _fetch32(logging);
-                cmp(logging, MD, A, B);
+                cmp(board->logging_enabled, MD, A, B);
                 break;
               }
-              
+            
               case 0b1011:{
                 uint8_t intcode = _fetch(logging);
-                sdl_system(logging, intcode); // This command will function like interrupt(), but will communicate with SDL instead.
+                sdl_system(board->logging_enabled, intcode); // This command will function like interrupt(), but will communicate with SDL instead.
                 break;
               }
-              
+            
               case 0b1100:{
-                PC++;
                 ens(logging);
                 break;
               }
-              
+            
               case 0b1101:{
                 uint8_t MD = _fetch(logging);
                 uint32_t A = _fetch32(logging);
                 uint32_t B = _fetch32(logging);
-                mov(logging, MD, A, B);
+                mov(board->logging_enabled, MD, A, B);
                 break;
               }
-    
+  
               case 0b1110:{
                 uint8_t MD = _fetch(logging);
                 uint32_t value = _fetch32(logging);
-                interrupt(logging, MD, value);
+                interrupt(board->logging_enabled, MD, value);
                 break;
               }
-    
+  
               default:{
                 std::cout << "Invalid Opcode!" << std::endl;
                 break;
               }
             }
+          }
+
+          else{
+            throw std::runtime_error("PC Error: Program Counter has exceeded " + std::to_string((int)board->RAM.getSize()) + "bytes, which is the amount of RAM currently installed.");
           }
         }
     };
@@ -687,29 +701,30 @@ class motherboard{
     SDL_GRAPHICS Graphics;
     Cpu CPU = Cpu(this);
     
-    void load_data_to_RAM(const bool logging, const std::vector<uint8_t>& data){
+    void load_data_to_RAM(const std::vector<uint8_t>& data){
       for (size_t i = 0; i < data.size(); i++){
         if (i < RAM.getSize()){
-          RAM.write(logging, i, data[i]);
+          RAM.write(logging_enabled, i, data[i]);
         }
       }
     }
 
-    bool logging_enabled;
-    std::vector<std::string> logs;
-    void log(){}
-    void clear_logs(){}
-    void SL2D(){ // S(ave) L(ogs) 2(to) D(isk)
-    }
   public:
     void power_on(const bool logging, const std::vector<uint8_t> PRG){
       powered_on = true;
-      load_data_to_RAM(logging, PRG);
+      logging_enabled = logging;
+      load_data_to_RAM(PRG);
       while (powered_on){ // This is the update cycle.
-        CPU.run(logging);
+        // this line here would be the call for updating user input.
+        Graphics.draw_image(); // Currently just being called for future-ready-proofing.
+        CPU.step(logging); // Let CPU run one opcode. A step.
       }
 
       if (save_output){
+        // Declare file and erase previous logs.
+        std::fstream file1(save_filename, std::ios::out);
+        if (file1.is_open()){file1 << "";}
+
         // Declare file
         std::fstream file(save_filename, std::ios::app);
             
@@ -731,10 +746,10 @@ class motherboard{
         std::exit(EXIT_SUCCESS);
         }
             
-            else{
-              // std::cout << "Program has finished." << std::endl; // Debug code. Enable only if you suspect your code shouldn't be stopping to see why.
-              std::exit(EXIT_SUCCESS);
-            }
+      else{
+        // std::cout << "Program has finished." << std::endl; // Debug code. Enable only if you suspect your code shouldn't be stopping to see why.
+        std::exit(EXIT_SUCCESS);
+      }
     }
 };
 
