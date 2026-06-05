@@ -23,12 +23,12 @@ struct opcode{
 };
 
 struct variable{
-  std::string inst;
+  std::vector<uint8_t> inst;
   int value = 0;
   int variable_regver = 6; // What register this variable is associated with. E.g the first initiated variable will ALWAYS be R6.
 
   variable() = default;
-  variable(std::string instvar, int valuevar, int variable_regvervar) : inst(instvar), value(valuevar), variable_regver(variable_regvervar) {}
+  variable(std::vector<uint8_t> instvar, int valuevar, int variable_regvervar) : inst(instvar), value(valuevar), variable_regver(variable_regvervar) {}
 };
 
 int main(int argc, char* argv[]){
@@ -103,17 +103,61 @@ int main(int argc, char* argv[]){
 
       if (inst[0] == '!') continue;
 
+      if (inst[0] == '*' && inst[1] == '_' && inst[spacepos-1] == '_'){ // Check if a line is variable.
+        std::string pure_value = inst.substr(spacepos+1, inst.size()-spacepos-1);
+        std::cout << "STOI #1" << std::endl;
+        int value = std::stoi(pure_value);
+        std::vector<uint8_t> MOV;
+        uint8_t MD;
+
+        if (pure_value[0] == 'R' || pure_value[0] == 'r'){
+          MD = (0b01) << 2 | (0b01);
+        }
+
+        else if (pure_value[0] == '@'){
+          MD = (0b01) << 2 | (0b10);
+        }
+
+        else{
+          MD = (0b01) << 2 | (0b00);
+        }
+
+        MOV.push_back(unified_opcodes.at("MOV").binary_number); // MOV
+        MOV.push_back(MD);
+        MOV.push_back(static_cast<uint8_t>(value)); // User-defind value for variable
+        MOV.push_back(static_cast<uint8_t>(starting_variable_reg));
+
+        variable_list[inst.substr(2, spacepos-3)] = variable(MOV, value, starting_variable_reg);
+        starting_variable_reg++;
+        continue;
+      }
+
       if (inst[0] == '_' && inst[spacepos-1] == '_'){ // Check if a line is variable.
-        int value = std::stoi(inst.substr(spacepos+1, inst.size()-spacepos-1));
-        std::string MOV =
-        // Formulate the string
-        "MOV "s + // MOV Opcode
-        std::to_string(value) + // User-defined value for variable
-        std::string(" R") + std::to_string(starting_variable_reg); // Assigned register for this variable.
+        std::string pure_value = inst.substr(spacepos+1, inst.size()-spacepos-1);
+        std::cout << "STOI #2" << std::endl;
+        int value = std::stoi(pure_value);
+        std::vector<uint8_t> MOV;
+        uint8_t MD;
+
+        if (pure_value[0] == 'R' || pure_value[0] == 'r'){
+          MD = (0b01) << 2 | (0b01);
+        }
+
+        else if (pure_value[0] == '@'){
+          MD = (0b01) << 2 | (0b10);
+        }
+
+        else{
+          MD = (0b01) << 2 | (0b00);
+        }
+
+        MOV.push_back(unified_opcodes.at("MOV").binary_number); // MOV
+        MOV.push_back(MD);
+        MOV.push_back(static_cast<uint8_t>(value)); // User-defind value for variable
+        MOV.push_back(static_cast<uint8_t>(starting_variable_reg));
 
         variable_list[inst.substr(1, spacepos-2)] = variable(MOV, value, starting_variable_reg);
         starting_variable_reg++;
-        // std::cout << variable_list.begin()->second.inst << std::endl;
         continue;
       }
 
@@ -144,7 +188,14 @@ int main(int argc, char* argv[]){
       if (spacepos == std::string::npos){
         throw std::runtime_error("ASM32 : Error: Your variable " + inst.substr(1) + " has no value!");
       }
-      if (inst[0] == '_' && inst[spacepos-1] == '_') continue;
+      if (inst[0] == '_' && inst[spacepos-1] == '_'){
+        std::vector<uint8_t> data = variable_list.at(inst.substr(1, spacepos-2)).inst;
+        output.push_back(data.at(0));
+        output.push_back(data.at(1));
+        output.push_back(data.at(2));
+        continue;
+      };
+      if (inst[0] == '*' && inst[1] == '_' && inst[spacepos-1] == '_') continue;
       if (inst[0] == ';' || (inst[0] == ';' && inst[1] == ' ')) continue;
       if (inst[0] == '!') continue;
 
@@ -192,11 +243,11 @@ int main(int argc, char* argv[]){
       if (unified_opcodes.at(opcode).parameter_count < static_cast<int>(parameters.size())){
         throw std::runtime_error("ASM32 : opcode '" + opcode + "' has more parameters than it should!");
       }
-
       std::vector<uint8_t> binary_parameters;
       for (std::string item : parameters){
         if (parameters.size() > 0){
           if (item[0] == 'R' || item[0] == 'r' || item[0] == '@'){
+            std::cout << "STOI #3" << std::endl;
             int data = stoi(item.substr(1));
             uint8_t LSB = static_cast<uint8_t>((data) & 0xFF);
             uint8_t MLSB = static_cast<uint8_t>((data >> 8) & 0xFF);
@@ -221,8 +272,8 @@ int main(int argc, char* argv[]){
             binary_parameters.push_back(MSB);
           }
 
-          else if (item[0] == '_' && item[item.size()-1] == '_'){ // Variables
-            variable variable_data = variable_list.at(item.substr(1, item.size()-2));
+          else if (item[0] == '*' && item[1] == '_' && item[item.size()-1] == '_'){ // Variables
+            variable variable_data = variable_list.at(item.substr(2, item.size()-3));
             int variable_value = variable_data.value;
             uint8_t LSB = static_cast<uint8_t>((variable_value) & 0xFF);
             uint8_t MLSB = static_cast<uint8_t>((variable_value >> 8) & 0xFF);
@@ -235,6 +286,8 @@ int main(int argc, char* argv[]){
           }
 
           else{
+            std::cout << "STOI #4" << std::endl;
+            std::cout << item << std::endl;
             int data = stoi(item);
             uint8_t LSB = static_cast<uint8_t>((data) & 0xFF);
             uint8_t MLSB = static_cast<uint8_t>((data >> 8) & 0xFF);
@@ -268,6 +321,7 @@ int main(int argc, char* argv[]){
             MD_value += "00";
           }
         }
+        std::cout << "STOI #5" << std::endl;
         MD = static_cast<uint8_t>(stoi(MD_value, nullptr, 2));
       }
 
