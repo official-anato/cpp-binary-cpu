@@ -181,9 +181,11 @@ class motherboard{
         void read_reg (uint32_t R){Registers.read(R);}
 
         // Kernel functionality
-        void kernel_print(const uint32_t message_location, const uint32_t length, const uint8_t MD){
+        void kernel_print(const uint32_t message_location, const uint32_t length, const uint8_t MD, const uint8_t MD2){
           uint8_t mode = (MD) & 0b11; // ADR (0b10) or REG (0b01)
-          uint8_t mode2 = (MD >> 2) & 0b11; // CHAR (0b00) or INT (0b01)
+          uint8_t mode2 = (MD2) & 0b11; // CHAR (0b00) or INT (0b01)
+          //std::cout << static_cast<int>(mode) << std::endl;
+          //std::cout << static_cast<int>(mode2) << std::endl;
           for (int i = message_location; i <= static_cast<int>(message_location + (length-1)); i++){ // Starting at message_location and stopping at length.
             if (mode == 0b10){
               if (mode2 == 0x0){
@@ -193,7 +195,7 @@ class motherboard{
                 std::cout << static_cast<int>(board->RAM.read(i));
               }
             }
-    
+
             else if (mode == 0b01){
               if (mode2 == 0x0){
                 std::cout << static_cast<char>(Registers.read(i));
@@ -519,13 +521,14 @@ class motherboard{
             case 0b0:{ // Print
               uint32_t message_location = Registers.read(0); // Register 0
               uint32_t length = Registers.read(1); // Register 1
-              uint8_t mode = static_cast<uint8_t>(Registers.read(2) >> 24); // Register 2
-              kernel_print(message_location, length, mode);
+              uint8_t mode = static_cast<uint8_t>(Registers.read(2)); // Register 2
+              uint8_t mode2 = static_cast<uint8_t>(Registers.read(3)); // Register 3
+              kernel_print(message_location, length, mode, mode2);
               break;
             }
     
             case 0b1: { // User Input
-              uint8_t userinput = static_cast<uint8_t>(Registers.read(0) >> 24); // Input source - R0
+              uint8_t userinput = static_cast<uint8_t>(Registers.read(0)); // Input source - R0
               uint32_t address = Registers.read(1); // Writing address - R1
               kernel_userinput(userinput, address);
               break;
@@ -536,8 +539,8 @@ class motherboard{
               uint32_t filename_length = Registers.read(1); // Filename char len - R1
               uint32_t data_address = Registers.read(2); // Byte Location - R2
               uint32_t data_length = Registers.read(3); // Byte amounr - R3
-              uint8_t mode1 = static_cast<uint8_t>(Registers.read(4) >> 24); // mode 1 - R4 - RAM or Registers
-              uint8_t mode2 = static_cast<uint8_t>(Registers.read(5) >> 24); // mode 2 - R5 - 32 bit chunking or 8 bit chunking
+              uint8_t mode1 = static_cast<uint8_t>(Registers.read(4)); // mode 1 - R4 - RAM or Registers
+              uint8_t mode2 = static_cast<uint8_t>(Registers.read(5)); // mode 2 - R5 - 32 bit chunking or 8 bit chunking
               kernel_filewrite(filename_address, filename_length, data_address, data_length, mode1, mode2);
               break;
             }
@@ -547,8 +550,8 @@ class motherboard{
               uint32_t filename_length = Registers.read(1); // Filename char len - R1
               uint32_t data_address = Registers.read(2); // Byte Location - R2
               uint32_t data_length = Registers.read(3); // Byte amounr - R3
-              uint8_t mode1 = static_cast<uint8_t>(Registers.read(4) >> 24); // mode 1 - R4 - RAM or Registers
-              uint8_t mode2 = static_cast<uint8_t>(Registers.read(5) >> 24); // mode 2 - R5 - 32 bit chunking or 8 bit chunking
+              uint8_t mode1 = static_cast<uint8_t>(Registers.read(4)); // mode 1 - R4 - RAM or Registers
+              uint8_t mode2 = static_cast<uint8_t>(Registers.read(5)); // mode 2 - R5 - 32 bit chunking or 8 bit chunking
               kernel_fileread(filename_address, filename_length, data_address, data_length, mode1, mode2);
               break;
             }
@@ -559,7 +562,7 @@ class motherboard{
             }
           }
         }
-        
+
         void step(const bool& logging){
           if (PC < static_cast<int>(board->RAM.getSize())){
             uint8_t opcode = _fetch(logging);
@@ -681,7 +684,7 @@ class motherboard{
                 interrupt(MD, value);
                 break;
               }
-  
+
               default:{
                 std::cout << "Invalid Opcode!" << std::endl;
                 break;
@@ -690,7 +693,7 @@ class motherboard{
           }
 
           else{
-            throw std::runtime_error("PC Error: Program Counter has exceeded " + std::to_string(static_cast<int>(board->RAM.getSize())) + "bytes, which is the amount of RAM currently installed.");
+            throw std::runtime_error("PC Error: Program Counter has exceeded " + std::to_string(static_cast<int>(board->RAM.getSize())) + " bytes, which is the amount of RAM currently installed.");
           }
         }
     };
@@ -705,7 +708,7 @@ class motherboard{
     RAM_Hardware RAM = RAM_Hardware(65535);
     SDL_GRAPHICS Graphics;
     Cpu CPU = Cpu(this);
-    
+
     void load_data_to_RAM(const std::vector<uint8_t>& data){
       for (size_t i = 0; i < data.size(); i++){
         if (i < RAM.getSize()){
@@ -732,25 +735,25 @@ class motherboard{
 
         // Declare file
         std::fstream file(save_filename, std::ios::app);
-            
+
         if (file.is_open()){
           // Formatting for the file output
           file  << "RAM (0 - 65535): [";
-              
+
           // Iterate through items in RAM and append them one by one.
           for (const auto& str : RAM.getRAM()){file << static_cast<int>(str) << ", ";}
           file << "]\nPC: " << CPU.PC << "\nRegisters (R0 - R31): [";
-              
+
           // Do the same for registers as well
           for (const auto& str : CPU.Registers.getRegisters()){file << static_cast<int>(str) << ", ";}
           file << "]";
           file.close();
         }
-            
+
         std::cout << "Program has finished. Saving data to " << save_filename << std::endl;
         std::exit(EXIT_SUCCESS);
         }
-            
+
       else{
         // std::cout << "Program has finished." << std::endl; // Debug code. Enable only if you suspect your code shouldn't be stopping to see why.
         std::exit(EXIT_SUCCESS);
@@ -763,10 +766,6 @@ int main(int argc, char* argv[]) {
   const char* os = 
   #ifdef _WIN32
     "Windows";
-  #elif __APPLE__
-    "Mac";
-  #elif __linux__
-    "Linux";
   #else
     "Unknown";
   #endif
@@ -790,9 +789,9 @@ int main(int argc, char* argv[]) {
 
   if ((option == "Compile") || (option == "compile")) {
     std::string command = (os == std::string("Windows")) ? "ASM32 \"" + filename + "\"" : "./ASM32 \"" + filename + "\"";
-    
+
     std::cout << "Compiling: " << filename << "..." << std::endl;
-    
+
     // std::system executes the command and halts this program until it finishes
     int exit_code = std::system(command.c_str());
     if (exit_code != 0) {
