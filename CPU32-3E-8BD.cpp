@@ -78,7 +78,7 @@ class motherboard{
     
         void write(const uint32_t address, const uint32_t value){
           if (address < RAM.size()){
-            RAM[address] = value;
+            RAM[address] = static_cast<uint8_t>(value);
           }
     
           else {
@@ -88,15 +88,15 @@ class motherboard{
     
         void write32(const uint32_t start_addr, const uint32_t data){ // Writes 1 word to RAM
           // Get the 4 bytes
-          uint8_t LSB = (data) & 0xFF;
-          uint8_t mid_LSB = (data >> 8) & 0xFF;
-          uint8_t mid_MSB = (data >> 16) & 0xFF;
-          uint8_t MSB = (data >> 24) & 0xFF;
+          uint8_t LSB = static_cast<uint8_t>((data) & 0xFF);
+          uint8_t MLSB = static_cast<uint8_t>((data >> 8) & 0xFF);
+          uint8_t MMSB = static_cast<uint8_t>((data >> 16) & 0xFF);
+          uint8_t MSB = static_cast<uint8_t>((data >> 24) & 0xFF);
     
           // Call the function.
           write(start_addr, LSB);
-          write(start_addr+1, mid_LSB);
-          write(start_addr+2, mid_MSB);
+          write(start_addr+1, MLSB);
+          write(start_addr+2, MMSB);
           write(start_addr+3, MSB);
         }
     
@@ -105,19 +105,19 @@ class motherboard{
             uint8_t value = RAM[address];
             return value;
           }
-    
+
           else{
-            std::cout << (int)address << std::endl;
+            std::cout << static_cast<int>(address) << std::endl;
             throw std::runtime_error("Error: Attempted to read from an invalid RAM address.");
           }
         }
-    
+
         uint32_t read32(const uint32_t start_addr){
           uint8_t LSB = read(start_addr + 0);
-          uint8_t mid_LSB = read(start_addr + 1);
-          uint8_t mid_MSB = read(start_addr + 2);
+          uint8_t MLSB = read(start_addr + 1);
+          uint8_t MMSB = read(start_addr + 2);
           uint8_t MSB = read(start_addr + 3);
-          uint32_t chunk32 = LSB | (mid_LSB << 8) | (mid_MSB << 16) | (MSB << 24);
+          uint32_t chunk32 = LSB | (MLSB << 8) | (MMSB << 16) | (MSB << 24);
           return chunk32;
         }
     };
@@ -134,7 +134,7 @@ class motherboard{
         }
 
         uint8_t getSize() const {
-          return Registers.size();
+          return static_cast<uint8_t>(Registers.size());
         }
 
         void write(const uint32_t address, const uint32_t value){
@@ -173,32 +173,33 @@ class motherboard{
     
     class Cpu{
       private:
+        // Read/writes to Reg/RAM
+        void write_ram(uint32_t R, uint32_t value){board->RAM.write(R, value);} // Create a detecion mechanism for 32 bit values to start chunking aka split-store.
+        void read_ram (uint32_t R){board->RAM.read(R);}
+
+        void write_reg(uint32_t R, uint32_t value){ Registers.write(R, value);}
+        void read_reg (uint32_t R){Registers.read(R);}
+
         // Kernel functionality
-        void kernel_writeram(uint32_t R, uint32_t value){board->RAM.write(R, value);}
-        void kernel_readram (uint32_t R){board->RAM.read(R);}
-
-        void kernel_writereg(uint32_t R, uint32_t value){ Registers.write(R, value);}
-        void kernel_readreg (uint32_t R){Registers.read(R);}
-
         void kernel_print(const uint32_t message_location, const uint32_t length, const uint8_t MD){
           uint8_t mode = (MD) & 0b11; // ADR (0b10) or REG (0b01)
           uint8_t mode2 = (MD >> 2) & 0b11; // CHAR (0b00) or INT (0b01)
           for (int i = message_location; i <= static_cast<int>(message_location + (length-1)); i++){ // Starting at message_location and stopping at length.
             if (mode == 0b10){
               if (mode2 == 0x0){
-                std::cout << (char)board->RAM.read(i);
+                std::cout << static_cast<char>(board->RAM.read(i));
               }
               else{
-                std::cout << (int)board->RAM.read(i);
+                std::cout << static_cast<int>(board->RAM.read(i));
               }
             }
     
             else if (mode == 0b01){
               if (mode2 == 0x0){
-                std::cout << (char)Registers.read(i);
+                std::cout << static_cast<char>(Registers.read(i));
               }
               else{
-                std::cout << (int)Registers.read(i);
+                std::cout << static_cast<int>(Registers.read(i));
               }
             }
     
@@ -212,27 +213,27 @@ class motherboard{
     
         void kernel_filewrite(uint32_t filename_location, uint32_t filename_len_char, uint32_t byte_location, uint32_t byte_amount, uint8_t MD1, uint8_t MD2){
           uint8_t mode = (MD1) & 0b11; // 2 modes - 0x1 indicates the filename location is in the registers, 0x0 indicates RAM address.
-          uint32_t mode2 = (MD2) && 0b11; // 2 modes - 0x1 means 32 bit chunking, 0x0 means 8 bit chunking.
+          uint32_t mode2 = (MD2) & 0b11; // 2 modes - 0x1 means 32 bit chunking, 0x0 means 8 bit chunking.
           std::string filename;
-    
+
           // Utilize for loops to read the filename.
           for (uint32_t i = filename_location; i >= (filename_location + (byte_amount-1)); i++){
             if (mode == 0x1){
               if (mode2 == 0x0){
               }
-    
+
               else if (mode2 == 0x1){
               }
-    
+
               else {
                 throw std::runtime_error("");
               }
             }
-    
+
             else if (mode == 0x0){
               if (mode2 == 0x0){
               }
-    
+
               else if (mode2 == 0x1){
               }
     
@@ -368,12 +369,12 @@ class motherboard{
             }
             
             case 0b01:{
-              kernel_writereg(loc, value);
+              write_reg(loc, value);
               break;
             }
             
             case 0b10:{
-              kernel_writeram(loc, value); // Create a detecion mechanism for 32 bit values to start chunking aka split-store.
+              write_ram(loc, value);
               break;
             }
             
@@ -385,9 +386,9 @@ class motherboard{
         }
        
        void __UpdFlg(uint32_t res){
-        if ((int)res < 0){Zero = false; Carry = false; Sign = true;}
-        else if ((int)res > 0){Zero = false; Carry = (res > 4294967295U) ? true : false; Sign = false;}
-        else if ((int)res == 0){Zero = true; Carry = false; Sign = false;}
+        if (static_cast<int>(res) < 0){Zero = false; Carry = false; Sign = true;}
+        else if (static_cast<int>(res) > 0){Zero = false; Carry = (res > 4294967295U) ? true : false; Sign = false;}
+        else if (static_cast<int>(res) == 0){Zero = true; Carry = false; Sign = false;}
        }
        
        void _UpdFlg(uint8_t MD, uint32_t R){
@@ -467,19 +468,23 @@ class motherboard{
     
           else{
             switch (intcode & 0xff){
-              case 0b0:{ // Write to VRAM
+              case 0b0:{ // Quit SDL
+                std::exit(1); // Temporary function for now.
                 break;
               }
               
               case 0b01:{ // Read from VRAM
+                board->Graphics.read_from_VRAM();
                 break;
               }
     
-              case 0b10:{ // Draw image
+              case 0b10:{ // Write to VRAM
+                board->Graphics.write_to_VRAM();
                 break;
               }
     
-              case 0b11:{ // Quit SDL
+              case 0b11:{ // Draw image
+                board->Graphics.draw_image();
                 break;
               }
     
@@ -514,14 +519,15 @@ class motherboard{
             case 0b0:{ // Print
               uint32_t message_location = Registers.read(0); // Register 0
               uint32_t length = Registers.read(1); // Register 1
-              uint32_t mode = Registers.read(2); // Register 2
+              uint8_t mode = static_cast<uint8_t>(Registers.read(2) >> 24); // Register 2
               kernel_print(message_location, length, mode);
               break;
             }
     
             case 0b1: { // User Input
-              uint32_t userinput = Registers.read(0); // Input source - R0
+              uint8_t userinput = static_cast<uint8_t>(Registers.read(0) >> 24); // Input source - R0
               uint32_t address = Registers.read(1); // Writing address - R1
+              kernel_userinput(userinput, address);
               break;
             }
     
@@ -530,8 +536,8 @@ class motherboard{
               uint32_t filename_length = Registers.read(1); // Filename char len - R1
               uint32_t data_address = Registers.read(2); // Byte Location - R2
               uint32_t data_length = Registers.read(3); // Byte amounr - R3
-              uint8_t mode1 = Registers.read(4); // mode 1 - R4 - RAM or Registers
-              uint8_t mode2 = Registers.read(5); // mode 2 - R5 - 32 bit chunking or 8 bit chunking
+              uint8_t mode1 = static_cast<uint8_t>(Registers.read(4) >> 24); // mode 1 - R4 - RAM or Registers
+              uint8_t mode2 = static_cast<uint8_t>(Registers.read(5) >> 24); // mode 2 - R5 - 32 bit chunking or 8 bit chunking
               kernel_filewrite(filename_address, filename_length, data_address, data_length, mode1, mode2);
               break;
             }
@@ -541,8 +547,8 @@ class motherboard{
               uint32_t filename_length = Registers.read(1); // Filename char len - R1
               uint32_t data_address = Registers.read(2); // Byte Location - R2
               uint32_t data_length = Registers.read(3); // Byte amounr - R3
-              uint8_t mode1 = Registers.read(4); // mode 1 - R4 - RAM or Registers
-              uint8_t mode2 = Registers.read(5); // mode 2 - R5 - 32 bit chunking or 8 bit chunking
+              uint8_t mode1 = static_cast<uint8_t>(Registers.read(4) >> 24); // mode 1 - R4 - RAM or Registers
+              uint8_t mode2 = static_cast<uint8_t>(Registers.read(5) >> 24); // mode 2 - R5 - 32 bit chunking or 8 bit chunking
               kernel_fileread(filename_address, filename_length, data_address, data_length, mode1, mode2);
               break;
             }
@@ -555,7 +561,7 @@ class motherboard{
         }
         
         void step(const bool& logging){
-          if (PC < (int)board->RAM.getSize()){
+          if (PC < static_cast<int>(board->RAM.getSize())){
             uint8_t opcode = _fetch(logging);
             switch(opcode){
               case 0b0:{
@@ -684,7 +690,7 @@ class motherboard{
           }
 
           else{
-            throw std::runtime_error("PC Error: Program Counter has exceeded " + std::to_string((int)board->RAM.getSize()) + "bytes, which is the amount of RAM currently installed.");
+            throw std::runtime_error("PC Error: Program Counter has exceeded " + std::to_string(static_cast<int>(board->RAM.getSize())) + "bytes, which is the amount of RAM currently installed.");
           }
         }
     };
@@ -703,16 +709,16 @@ class motherboard{
     void load_data_to_RAM(const std::vector<uint8_t>& data){
       for (size_t i = 0; i < data.size(); i++){
         if (i < RAM.getSize()){
-          RAM.write(i, data[i]);
+          RAM.write(static_cast<uint32_t>(i), data[i]);
         }
       }
     }
 
   public:
-    void power_on(const bool logging, const std::vector<uint8_t> PRG){
+    void power_on(const bool logging, const std::vector<uint8_t> Program_data){
       powered_on = true;
       logging_enabled = logging;
-      load_data_to_RAM(PRG);
+      load_data_to_RAM(Program_data);
       while (powered_on){ // This is the update cycle.
         // this line here would be the call for updating user input.
         Graphics.draw_image(); // Currently just being called for future-ready-proofing.
@@ -732,11 +738,11 @@ class motherboard{
           file  << "RAM (0 - 65535): [";
               
           // Iterate through items in RAM and append them one by one.
-          for (const auto& str : RAM.getRAM()){file << (int)str << ", ";}
+          for (const auto& str : RAM.getRAM()){file << static_cast<int>(str) << ", ";}
           file << "]\nPC: " << CPU.PC << "\nRegisters (R0 - R31): [";
               
           // Do the same for registers as well
-          for (const auto& str : CPU.Registers.getRegisters()){file << (int)str << ", ";}
+          for (const auto& str : CPU.Registers.getRegisters()){file << static_cast<int>(str) << ", ";}
           file << "]";
           file.close();
         }

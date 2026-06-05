@@ -2,7 +2,6 @@ TODO: (top is easiest, bottom is hardest.)
 - Rewrite documentation to support the changes made.
 - Fix output file bug where registers etc have an extra ", " at the end.
 - Implement try/catch handling for errors. (Somewhat done)
-- Replace all instances of implicit typecasting to be static_cast<>.
 - Make log system more detailed by tracking values as such register and ram.
 - Add debug options. (Stopping execution at a certain PC value, slowing the execution rate to 1 instruction per second, etc)
 - Add support for external syscalls (User-made syscalls, aka libraries)

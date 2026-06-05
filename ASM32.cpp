@@ -198,10 +198,10 @@ int main(int argc, char* argv[]){
         if (parameters.size() > 0){
           if (item[0] == 'R' || item[0] == 'r' || item[0] == '@'){
             int data = stoi(item.substr(1));
-            uint8_t LSB = (data) & 0xFF;
-            uint8_t MLSB = (data >> 8) & 0xFF;
-            uint8_t MMSB = (data >> 16) & 0xFF;
-            uint8_t MSB = (data >> 24) & 0xFF;
+            uint8_t LSB = static_cast<uint8_t>((data) & 0xFF);
+            uint8_t MLSB = static_cast<uint8_t>((data >> 8) & 0xFF);
+            uint8_t MMSB = static_cast<uint8_t>((data >> 16) & 0xFF);
+            uint8_t MSB = static_cast<uint8_t>((data >> 24) & 0xFF);
             //std::cout << "data = " << (LSB|MLSB<<8|MMSB<<16|MSB<<24) << std::endl;
             binary_parameters.push_back(LSB);
             binary_parameters.push_back(MLSB);
@@ -211,10 +211,10 @@ int main(int argc, char* argv[]){
 
           else if(item[0] == ';'){ // Labels
             int data = label_list.at(item.substr(1));
-            uint8_t LSB = (data) & 0xFF;
-            uint8_t MLSB = (data >> 8) & 0xFF;
-            uint8_t MMSB = (data >> 16) & 0xFF;
-            uint8_t MSB = (data >> 24) & 0xFF;
+            uint8_t LSB = static_cast<uint8_t>((data) & 0xFF);
+            uint8_t MLSB = static_cast<uint8_t>((data >> 8) & 0xFF);
+            uint8_t MMSB = static_cast<uint8_t>((data >> 16) & 0xFF);
+            uint8_t MSB = static_cast<uint8_t>((data >> 24) & 0xFF);
             binary_parameters.push_back(LSB);
             binary_parameters.push_back(MLSB);
             binary_parameters.push_back(MMSB);
@@ -224,10 +224,10 @@ int main(int argc, char* argv[]){
           else if (item[0] == '_' && item[item.size()-1] == '_'){ // Variables
             variable variable_data = variable_list.at(item.substr(1, item.size()-2));
             int variable_value = variable_data.value;
-            uint8_t LSB = (variable_value) & 0xFF;
-            uint8_t MLSB = (variable_value >> 8) & 0xFF;
-            uint8_t MMSB = (variable_value >> 16) & 0xFF;
-            uint8_t MSB = (variable_value >> 24) & 0xFF;
+            uint8_t LSB = static_cast<uint8_t>((variable_value) & 0xFF);
+            uint8_t MLSB = static_cast<uint8_t>((variable_value >> 8) & 0xFF);
+            uint8_t MMSB = static_cast<uint8_t>((variable_value >> 16) & 0xFF);
+            uint8_t MSB = static_cast<uint8_t>((variable_value >> 24) & 0xFF);
             binary_parameters.push_back(LSB);
             binary_parameters.push_back(MLSB);
             binary_parameters.push_back(MMSB);
@@ -236,10 +236,10 @@ int main(int argc, char* argv[]){
 
           else{
             int data = stoi(item);
-            uint8_t LSB = (data) & 0xFF;
-            uint8_t MLSB = (data >> 8) & 0xFF;
-            uint8_t MMSB = (data >> 16) & 0xFF;
-            uint8_t MSB = (data >> 24) & 0xFF;
+            uint8_t LSB = static_cast<uint8_t>((data) & 0xFF);
+            uint8_t MLSB = static_cast<uint8_t>((data >> 8) & 0xFF);
+            uint8_t MMSB = static_cast<uint8_t>((data >> 16) & 0xFF);
+            uint8_t MSB = static_cast<uint8_t>((data >> 24) & 0xFF);
             binary_parameters.push_back(LSB);
             binary_parameters.push_back(MLSB);
             binary_parameters.push_back(MMSB);
@@ -268,7 +268,7 @@ int main(int argc, char* argv[]){
             MD_value += "00";
           }
         }
-        MD = stoi(MD_value, nullptr, 2);
+        MD = static_cast<uint8_t>(stoi(MD_value, nullptr, 2));
       }
 
       // Push to output. DO NOT CHANGE ORDERING.
@@ -293,7 +293,7 @@ int main(int argc, char* argv[]){
 
     // 4. Close the file
     outFile.close();
-    std::cout << "Byte counter = " << (int)byte_counter << std::endl;
+    std::cout << "Byte counter = " << byte_counter << std::endl;
     std::cout << "ASM32 : File written successfully." << std::endl;
   }
 
