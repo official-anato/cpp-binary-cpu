@@ -3,6 +3,16 @@
 >> Written by Anato.
 */
 
+/*
+STATUS Report to self, 2026 June 7th, 12:36 PM:
+Future me, I've done the research for why the assembler is currently broken.
+I checked with a hex editor, and it seems that we're generating more MOV instructions than needed,
+more importantly, they seem to be consisting of garbage values, incomplete values, or even the same value (that being 6).
+I suspect it is likely about how you generate and write the '_' circumfix variables, NOT the '*_" variables.
+The asm file has been modified to use variables for all registers that aren't related to making syscalls. E.g _A_, _B_, _Counter, etc.
+Please fix this issue so we can get back to making the CPU's kernel.
+*/
+
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -133,7 +143,7 @@ int main(int argc, char* argv[]){
       }
 
       if (inst[0] == '_' && inst[spacepos-1] == '_'){ // Check if a line is variable.
-        std::string pure_value = inst.substr(spacepos+1, inst.size()-spacepos-1);
+        std::string pure_value = inst.substr(spacepos, inst.size()-spacepos-1);
         std::cout << "STOI #2" << std::endl;
         int value = std::stoi(pure_value);
         std::vector<uint8_t> MOV;
@@ -193,6 +203,13 @@ int main(int argc, char* argv[]){
         output.push_back(data.at(0));
         output.push_back(data.at(1));
         output.push_back(data.at(2));
+        output.push_back(data.at(3));
+        std::fstream outputfile("output_variable.bin", std::fstream::app);
+        for (const auto& item : output){
+          std::cout << "item = " << static_cast<int>(item) << std::endl;
+          outputfile << item;
+        }
+        byte_counter += unified_opcodes.at("MOV").size_bytes;
         continue;
       };
       if (inst[0] == '*' && inst[1] == '_' && inst[spacepos-1] == '_') continue;
@@ -272,7 +289,23 @@ int main(int argc, char* argv[]){
             binary_parameters.push_back(MSB);
           }
 
-          else if (item[0] == '*' && item[1] == '_' && item[item.size()-1] == '_'){ // Variables
+          else if (item[0] == '_' && item[item.size()-1] == '_'){
+            std::cout << "item = " << item << std::endl;
+            variable variable_data = variable_list.at(item.substr(1, item.size()-2));
+            int variable_value = variable_data.variable_regver;
+            std::cout << "variable value = " << variable_value << std::endl;
+            uint8_t LSB = static_cast<uint8_t>((variable_value) & 0xFF);
+            uint8_t MLSB = static_cast<uint8_t>((variable_value >> 8) & 0xFF);
+            uint8_t MMSB = static_cast<uint8_t>((variable_value >> 16) & 0xFF);
+            uint8_t MSB = static_cast<uint8_t>((variable_value >> 24) & 0xFF);
+            binary_parameters.push_back(LSB);
+            binary_parameters.push_back(MLSB);
+            binary_parameters.push_back(MMSB);
+            binary_parameters.push_back(MSB);
+          }
+          
+          else if (item[0] == '*' && item[1] == '_' && item[item.size()-1] == '_'){ // Macros
+            std::cout << "Item2 = " << item << std::endl;
             variable variable_data = variable_list.at(item.substr(2, item.size()-3));
             int variable_value = variable_data.value;
             uint8_t LSB = static_cast<uint8_t>((variable_value) & 0xFF);
@@ -286,8 +319,6 @@ int main(int argc, char* argv[]){
           }
 
           else{
-            std::cout << "STOI #4" << std::endl;
-            std::cout << item << std::endl;
             int data = stoi(item);
             uint8_t LSB = static_cast<uint8_t>((data) & 0xFF);
             uint8_t MLSB = static_cast<uint8_t>((data >> 8) & 0xFF);
@@ -321,7 +352,6 @@ int main(int argc, char* argv[]){
             MD_value += "00";
           }
         }
-        std::cout << "STOI #5" << std::endl;
         MD = static_cast<uint8_t>(stoi(MD_value, nullptr, 2));
       }
 
