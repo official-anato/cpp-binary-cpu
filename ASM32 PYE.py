@@ -7,6 +7,12 @@ class opcode:
   parameter_count: int
   size_bytes: int
 
+@dataclass
+class variable:
+  inst: list
+  value: int 
+  variable_regver: int
+
 unified_opcodes = {
   "HLT": opcode(0x0, 0, 1),
   "ADD": opcode(0x1, 3, 14),
@@ -25,65 +31,44 @@ unified_opcodes = {
   "INT": opcode(0xE, 1, 6)
 }
 
+def gen_md(value: list):
+  MD = b''
+  for i in value:
+    if i[0] == 'R' or i[0] == 'r':
+      MD += b'0b01'
+
+    if i[0] == '@':
+      MD += b'0b10'
+
+    else:
+      MD += b'0b00'
+
+  return MD[0]
+
 def gen_binary_params(params: list):
   binary_parameters = []
   for item in params:
     # 0 is a placeholder value.
     if (item[0] == 'R' or item[0] == 'r' or item[0] == '@'): # RAM and Registers
-      data = int(item[1:])
-      LSB = 0
-      MLSB = 0
-      MMSB = 0
-      MSB = 0
-      binary_parameters.append(LSB)
-      binary_parameters.append(MLSB)
-      binary_parameters.append(MMSB)
-      binary_parameters.append(MSB)
+      data = int(item[1:]).to_bytes(4, byteorder='little')
+      binary_parameters.extend(data)
 
-    # Constants and Variables are WIP
+    # Constants, Labels, and Variables are WIP - temporarily, they will return 0b0 for now.
     elif (item[0] == '*' and item[1] == '_' and item[-1] == '_'): # Constants
-      data = int(item[2:-2])
-      LSB = 0
-      MLSB = 0
-      MMSB = 0
-      MSB = 0
-      binary_parameters.append(LSB)
-      binary_parameters.append(MLSB)
-      binary_parameters.append(MMSB)
-      binary_parameters.append(MSB)
+      data = b'0' # int(item[2:-2]).to_bytes(4, byteorder='little')
+      binary_parameters.extend(data)
 
     elif (item[0] == '_' and item[-1] == '_'): # Variables
-      data = int(item[1:-2])
-      LSB = 0
-      MLSB = 0
-      MMSB = 0
-      MSB = 0
-      binary_parameters.append(LSB)
-      binary_parameters.append(MLSB)
-      binary_parameters.append(MMSB)
-      binary_parameters.append(MSB)
+      data = b'0' # int(item[1:-2]).to_bytes(4, byteorder='little')
+      binary_parameters.extend(data)
 
     elif(item[0] == ';'): # Labels
-      data = label_list[item[1:]]
-      LSB = 0
-      MLSB = 0
-      MMSB = 0
-      MSB = 0
-      binary_parameters.append(LSB)
-      binary_parameters.append(MLSB)
-      binary_parameters.append(MMSB)
-      binary_parameters.append(MSB)
+      data = b'0' # label_list[item[1:]].to_bytes(4, byteorder='little')
+      binary_parameters.extend(data)
 
-    else: 
-      data = int(item)
-      LSB = 0
-      MLSB = 0
-      MMSB = 0
-      MSB = 0
-      binary_parameters.append(LSB)
-      binary_parameters.append(MLSB)
-      binary_parameters.append(MMSB)
-      binary_parameters.append(MSB)
+    else:
+      data = int(item).to_bytes(4, byteorder='little')
+      binary_parameters.extend(data)
 
   return binary_parameters
 
@@ -93,6 +78,12 @@ if __name__ == "__main__":
   byte_counter = 0
   starting_variable_reg = 6
   label_list = {} # format: (label_name, byte_count)
+  variable_list = {
+    # Specification:
+    # Variables are stored in RAM where they are created.
+    # This means that until I've figured out the implementation of dynamically changing the variables,
+    # all variables are currently constants.
+  }
 
   # Get filename of source
   args = sys.argv[1:]
@@ -107,11 +98,26 @@ if __name__ == "__main__":
       if not line.strip():
         continue
 
+      # Remove comments
+      commentpos = line.find("!")
+      if commentpos != -1:
+        line = line[0:commentpos]
+
       asm_list.append(line)
 
   # > Pass one:
   for line in asm_list:
-    if line.startswith("!"):
+    if line == '':
+      continue
+
+    inst = line.split()
+
+    # Find space
+    spacepos = line.find(" ")
+    if (spacepos == -1 and line[0] == '_'):
+      raise RuntimeError(f"ASM32 : Error: Variable {inst[0]} lacks a value!")
+
+    if line.startswith("!"): # Ignore comments
       continue
 
     # Note to self:
@@ -119,11 +125,18 @@ if __name__ == "__main__":
     # Variables are names surrounded by underscores.
     # Constants are the same, with an asterisk as a prefix.
 
-    if (line[0] == '*' or line[0] == '_'):
+    if (line[0] == '*' and inst[0][-1] == '_'): # Constants
+      pure_value = int(inst[1])
+      print(pure_value)
+      continue
+
+    if (line[0] == '_' and inst[0][-1] == '_'): # Variables
+      pure_value = int(inst[1])
+      print(pure_value)
       continue
 
     if (line[0] == ';'): # Check if a line is a label
-      if len(line) <= 1:
+      if len(line) <= 1 and line[1] != ' ': # Checks if label has a minimum of 1 character, and is not a space
         raise RuntimeError("ASM32 : Error: Label lacks a name!")
 
       elif (line[1] == ' '): # Accounts for a space
@@ -142,7 +155,7 @@ if __name__ == "__main__":
 
   # > Pass two:
   for line in asm_list:
-    if line.startswith(';') or (line.startswith(';') and line[1] == ' ') or line.startswith("!") or line.startswith("*"):
+    if line == '' or line.startswith(';') or (line.startswith(';') and line[1] == ' ') or line.startswith("!") or line.startswith("*"):
       continue
 
     if line.startswith('_'):
@@ -158,13 +171,8 @@ if __name__ == "__main__":
     except KeyError as e:
       raise RuntimeError("ASM32 : Error: An invalid opcode was found in your source.")
 
-    # Remove opcode from line
+    # Remove opcode from lines
     line_copy = line[4:]
-
-    # Remove comments
-    commentpos = line_copy.find("!")
-    if commentpos != -1:
-      line_copy = line_copy[0:commentpos]
 
     # Separate parameters
     normal_params = line_copy.split()
@@ -182,8 +190,10 @@ if __name__ == "__main__":
       final_params = gen_binary_params(normal_params)
 
     # Generate MD byte
-    MD = 0
     MD_available = False
+    if len(normal_params) > 0:
+      MD = gen_md(normal_params)
+      MD_available = True
 
     # Write to output
     output.append(unified_opcodes[op].binary_number) # Opcode
